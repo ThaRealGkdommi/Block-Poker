@@ -1,0 +1,1721 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Block Poker</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%231d140e%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22%23ffc61a%22/%3E%3Cpath d=%22M4 9.5 16 16V29L4 22.5Z%22 fill=%22%23b9784a%22/%3E%3Cpath d=%22M28 9.5 16 16V29L28 22.5Z%22 fill=%22%237a4a2a%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221%22/%3E%3Cpath d=%22M4 9.5 16 16 28 9.5M16 16V29M4 9.5V22.5L16 29 28 22.5V9.5L16 3Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2213%22 y=%228%22 width=%226%22 height=%223%22 fill=%22%23fff3a8%22/%3E%3Crect x=%228%22 y=%2217%22 width=%224%22 height=%224%22 fill=%22%232ecc71%22/%3E%3Crect x=%2220%22 y=%2218%22 width=%224%22 height=%224%22 fill=%22%234ad0ff%22/%3E%3C/svg%3E">
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#15100c; --panel:#241a13; --panel2:#33261b; --edge:#0b0705; --line:#4a3827;
+    --text:#f6ecda; --muted:#b8a68c;
+    --gold:#ffcf4a; --chips:#4a9bff; --mult:#ff5147; --ok:#63d44b; --bad:#ff6a5c; --emerald:#2fe07a;
+    --r-common:#a9aeb4; --r-uncommon:#63d44b; --r-rare:#4a9bff; --r-legendary:#ffc61a;
+    --avail:calc(100vw - 32px);
+    --hn:8;
+    --cw:clamp(34px, min(calc((min(var(--avail), 800px) - 70px) / var(--hn)), calc((100vh - 430px) / 2.8)), 88px);
+  }
+  @media (min-width:940px){ :root{ --avail:calc(100vw - 280px - 64px); } }
+  *{box-sizing:border-box}
+  [hidden]{display:none!important}
+  html,body{margin:0}
+  body{
+    min-height:100vh; color:var(--text);
+    font:700 16px/1.35 Consolas,Menlo,"Courier New",monospace;
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(255,190,80,.16), transparent 55%),
+      repeating-conic-gradient(#1a130e 0% 25%, #17100b 0% 50%) 0 0 / 32px 32px;
+    background-color:var(--bg);
+  }
+  button{font:inherit;color:inherit}
+  :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+  .muted{color:var(--muted);font-weight:400}
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    cursor:pointer; padding:10px 16px; min-height:44px;
+    background:#5a4632; border:3px solid var(--edge);
+    box-shadow:inset -4px -4px 0 rgba(0,0,0,.35), inset 4px 4px 0 rgba(255,255,255,.22);
+    letter-spacing:.02em;
+  }
+  .btn:hover:not(:disabled){background:#6b543c}
+  .btn:active:not(:disabled){transform:translateY(2px)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn.go{background:#2f8f3f}.btn.go:hover:not(:disabled){background:#38a84b}
+  .btn.warn{background:#9a3a2d}.btn.warn:hover:not(:disabled){background:#b5463a}
+  .btn.gold{background:#b8891a;color:#fff7dc}.btn.gold:hover:not(:disabled){background:#d29f23}
+  .btn.on{background:#b8891a;color:#fff7dc}
+  .btn.small{min-height:36px;padding:6px 10px;font-size:14px}
+
+  /* ---------- Title ---------- */
+  .screen{min-height:100vh}
+  #title{display:grid;place-items:center;padding:24px 16px}
+  .tbox{max-width:560px;width:100%;text-align:center}
+  .logo{display:flex;justify-content:center;gap:8px;margin-bottom:18px}
+  .logo svg{width:46px;height:46px;image-rendering:pixelated;filter:drop-shadow(0 4px 0 rgba(0,0,0,.5))}
+  .logo svg:nth-child(odd){transform:translateY(6px)}
+  .tbox h1{margin:0 0 6px;font-size:clamp(34px,9vw,60px);letter-spacing:.04em;line-height:1;
+    text-shadow:0 5px 0 #000, 0 0 30px rgba(255,190,80,.35)}
+  .tbox .sub{margin:0 0 22px;color:var(--muted);font-weight:400}
+  .tlist{list-style:none;margin:0 auto 22px;padding:14px 16px;text-align:left;max-width:460px;
+    background:var(--panel);border:3px solid var(--edge);box-shadow:inset 0 0 0 3px var(--line)}
+  .tlist li{padding:4px 0;font-weight:400}
+  .tlist b{color:var(--gold)}
+  .tbtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .record{margin-top:16px;color:var(--muted);font-weight:400;min-height:1.4em}
+
+  /* ---------- Top bar ---------- */
+  .hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 16px;
+    background:rgba(11,7,5,.7);border-bottom:3px solid var(--edge);position:sticky;top:0;z-index:20;backdrop-filter:blur(4px)}
+  .brand{font-size:18px;letter-spacing:.06em;margin-right:auto}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--panel);border:3px solid var(--edge);box-shadow:inset 0 0 0 2px var(--line)}
+  .pill svg{width:18px;height:18px;image-rendering:pixelated}
+  .pill.money{color:var(--emerald)}
+  .hud-btns{display:flex;gap:6px;flex-wrap:wrap}
+
+  /* ---------- Layout ---------- */
+  .layout{display:grid;grid-template-columns:1fr;gap:14px;max-width:1180px;margin:0 auto;padding:10px 16px 24px}
+  @media (min-width:940px){ .layout{grid-template-columns:280px 1fr;align-items:start} .side{position:sticky;top:70px} }
+  .box{background:var(--panel);border:3px solid var(--edge);box-shadow:inset 0 0 0 3px var(--line);padding:12px 14px;margin-bottom:12px}
+  .side .lbl{color:var(--muted);font-weight:400;font-size:14px}
+  .rname{font-size:20px;margin:2px 0 8px}
+  .scorebig{font-size:34px;color:var(--gold);line-height:1;margin:6px 0}
+  .scorebig small{font-size:15px;color:var(--muted);font-weight:400}
+  .bar{height:12px;background:#0f0a07;border:2px solid var(--edge);margin-top:8px}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffb52e,#ffe27a)}
+  .calc .cname{min-height:1.4em;margin-bottom:6px}
+  .calc .crow{display:flex;align-items:stretch;gap:8px;font-size:26px}
+  .calc .clab{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;font-size:10px;font-weight:400;color:var(--muted);margin-top:2px;line-height:1.1}
+  .calc .clab span{text-align:center;min-width:0;overflow:hidden}
+  .calc .clab .x{visibility:hidden;font-size:26px;height:0}
+  .cc,.cm{flex:1;text-align:center;padding:8px 4px;border:3px solid var(--edge);color:#fff;min-width:0}
+  .cc{background:#2c63b8}.cm{background:#b8362d}
+  .crow .x{align-self:center;color:var(--muted)}
+  .bump{animation:bump .22s}
+  @keyframes bump{50%{transform:scale(1.18)}}
+  .ctotal{min-height:1.5em;margin-top:8px;text-align:center;font-size:22px;color:var(--gold)}
+  .counters{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+  .counters.two{grid-template-columns:1fr 1fr}
+  .cnt b{display:block;font-size:30px;line-height:1.1}
+  .cnt.h b{color:var(--chips)}.cnt.d b{color:var(--mult)}.cnt.k b{color:var(--muted)}
+  .cnt span{color:var(--muted);font-weight:400;font-size:14px}
+
+  .bossbar{background:#3a1713;border:3px solid #7d241b;padding:10px 14px;margin-bottom:12px}
+
+  /* ---------- Jokers ---------- */
+  .jwrap{position:relative;margin-bottom:6px}
+  .jokers{display:flex;gap:6px;align-items:center;margin-bottom:0}
+  .jslot{position:relative;flex:1 1 0;max-width:118px;height:66px;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    background:var(--panel2);border:3px solid var(--edge);border-bottom:5px solid var(--rc,var(--edge));box-shadow:inset 0 0 0 3px var(--line);cursor:grab;padding:2px;touch-action:none;user-select:none;-webkit-user-select:none}
+  .jslot.empty{cursor:default;opacity:.45;font-size:24px;color:var(--muted);border-style:dashed;border-bottom-style:dashed}
+  .jslot.sel{box-shadow:inset 0 0 0 3px var(--gold);transform:translateY(-6px)}
+  .je{font-size:clamp(20px,2.4vw,28px);line-height:1;pointer-events:none}
+  .jn{font-size:clamp(9px,1vw,12px);line-height:1.1;text-align:center;font-weight:400;overflow:hidden;max-width:100%;white-space:nowrap;text-overflow:ellipsis;pointer-events:none}
+  .jcount{display:flex;align-items:center;gap:6px;color:var(--muted);font-weight:400;font-size:14px;white-space:nowrap}
+  .jinfo{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:15;padding:6px 10px;background:#1d140e;border:3px solid var(--gold);box-shadow:0 8px 0 rgba(0,0,0,.45);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-weight:400;font-size:14px}
+  .jinfo b{font-weight:700}
+  .jacts{display:flex;gap:6px}
+  .jslot.dragging{z-index:30;opacity:.92;cursor:grabbing;box-shadow:0 10px 0 rgba(0,0,0,.45), inset 0 0 0 3px var(--gold);transition:none}
+  .jslot.dropt{outline:3px dashed var(--gold);outline-offset:2px}
+  .r-common{--rc:var(--r-common)}.r-uncommon{--rc:var(--r-uncommon)}.r-rare{--rc:var(--r-rare)}.r-legendary{--rc:var(--r-legendary)}
+  .r-book{--rc:#b9784a}.r-grand{--rc:#d2493a}
+  .offer{position:relative}
+  .offer .rib{position:absolute;top:4px;right:6px;font-size:10px;letter-spacing:.5px;color:var(--rc)}
+  .offer.r-rare{box-shadow:inset 0 0 0 3px var(--line),0 0 9px rgba(80,160,255,.35)}
+  .offer.r-legendary{overflow:hidden;animation:lglow 2.4s ease-in-out infinite}
+  .offer.r-legendary::after{content:'';position:absolute;top:0;left:-60%;width:40%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,240,170,.4),transparent);transform:skewX(-20deg);animation:shine 3.4s ease-in-out infinite;pointer-events:none}
+  @keyframes shine{0%,55%{left:-60%}100%{left:140%}}
+  @keyframes lglow{50%{box-shadow:inset 0 0 0 3px var(--line),0 0 20px rgba(255,198,26,.65)}}
+  .jslot.pop{animation:popin .7s ease-out}
+  @keyframes popin{0%{transform:scale(1.35);filter:brightness(2)}100%{transform:scale(1);filter:none}}
+  body.flash::after{content:'';position:fixed;inset:0;z-index:60;pointer-events:none;background:radial-gradient(circle,rgba(255,220,90,.4),transparent 65%);animation:flashA .8s ease-out forwards}
+  @keyframes flashA{from{opacity:1}to{opacity:0}}
+  .picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0 4px}
+  .pick{font:inherit;color:inherit;cursor:pointer;text-align:center}
+  .pick:hover,.pick:focus-visible{transform:translateY(-2px);outline:3px solid var(--gold)}
+  @media (prefers-reduced-motion:reduce){.offer.r-legendary,.offer.r-legendary::after,.jslot.pop,body.flash::after{animation:none}}
+  .offer.r-legendary,.jtile.r-legendary{box-shadow:inset 0 0 0 3px var(--line),0 0 12px rgba(255,198,26,.38)}
+  .jslot.r-legendary:not(.sel):not(.dragging){box-shadow:inset 0 0 0 3px var(--line),0 0 10px rgba(255,198,26,.45)}
+  .jtile.r-legendary .jt-badge{background:linear-gradient(135deg,#fff3a8,#ffc61a 55%,#c98a00)}
+  .offer.r-legendary .ot{color:#ffd34d}
+  .info{display:inline-grid;place-items:center;width:22px;height:22px;padding:0;border-radius:50%;cursor:pointer;flex:0 0 auto;
+    font:700 13px/1 Georgia,serif;font-style:italic;color:var(--muted);background:transparent;border:2px solid var(--muted)}
+  .info:hover{color:var(--gold);border-color:var(--gold)}
+  .box .info.corner{position:absolute;top:8px;right:8px}
+  .side .box{position:relative}
+
+  /* ---------- Cards ---------- */
+  .card{
+    position:relative;width:var(--cw);height:calc(var(--cw)*1.4);flex:0 0 auto;padding:0;cursor:pointer;color:#2a1d12;
+    border:3px solid var(--edge);background:var(--cbg,#eee);
+    box-shadow:inset -3px -3px 0 rgba(0,0,0,.18), inset 3px 3px 0 rgba(255,255,255,.55), 0 4px 0 rgba(0,0,0,.45);
+    transition:transform .12s ease;
+  }
+  div.card{cursor:default}
+  .card .cv{position:absolute;top:3px;left:3px;font-size:calc(var(--cw)*.24);line-height:1;padding:2px 3px;background:#2c63b8;color:#fff;border:2px solid var(--edge)}
+  .card .ic{position:absolute;inset:0;display:grid;place-items:center;padding-top:calc(var(--cw)*.12)}
+  .card .ic svg{width:calc(var(--cw)*.6);height:calc(var(--cw)*.6);image-rendering:pixelated}
+  .card .cn{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:calc(var(--cw)*.17);font-weight:700;line-height:1}
+  .m-holz{--cbg:#f1dcb6}.m-stock{--cbg:#ecd7b6}.m-stein{--cbg:#e4e7ea}.m-eisen{--cbg:#eceae8}.m-gold{--cbg:#fbf0bd}.m-diamant{--cbg:#d3f7f9}
+  button.card:hover{transform:translateY(-5px)}
+  .card.sel{transform:translateY(-18px)!important;outline:3px solid var(--gold);outline-offset:0}
+  .card.deb{filter:grayscale(1) brightness(.72)}
+  .card .x{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--cw)*.7);color:rgba(200,30,20,.85);text-shadow:0 2px 0 #000}
+  .score{animation:pop .35s}
+  @keyframes pop{50%{transform:translateY(-12px) scale(1.12)}}
+  .float{position:absolute;left:50%;top:-6px;transform:translateX(-50%);font-weight:900;font-size:15px;padding:2px 6px;border:2px solid var(--edge);pointer-events:none;white-space:nowrap;z-index:6;animation:floatUp .9s ease-out forwards;color:#fff}
+  .float.c{background:#2c63b8}.float.m{background:#b8362d}.float.x{background:#8a3fd0}.float.d{background:#555}
+  @keyframes floatUp{0%{opacity:0;margin-top:10px}15%{opacity:1}100%{opacity:0;margin-top:-38px}}
+
+  /* ---------- Workbench ---------- */
+  .bench{display:flex;align-items:center;justify-content:center;gap:clamp(3px,1vw,8px);padding:8px;margin-bottom:2px;
+    background:linear-gradient(#3b2a1a,#2e2014);border:3px solid var(--edge);box-shadow:inset 0 0 0 3px #5a4029}
+  .slot{position:relative;width:var(--cw);height:calc(var(--cw)*1.4);flex:0 0 auto;background:rgba(0,0,0,.35);border:3px solid #120c08;box-shadow:inset 3px 3px 0 rgba(0,0,0,.45), inset -2px -2px 0 rgba(255,255,255,.08);display:grid;place-items:center}
+  .slot .card{position:absolute;inset:-3px;width:auto;height:auto}
+  .slot .ghost svg{width:calc(var(--cw)*.5);height:calc(var(--cw)*.5);opacity:.55;image-rendering:pixelated}
+  .arrow{font-size:calc(var(--cw)*.5);color:var(--muted);flex:0 0 auto}
+  .slot.result{border-color:var(--gold);flex-direction:column;gap:2px;padding:2px;text-align:center}
+  .slot.result .re{font-size:calc(var(--cw)*.5);line-height:1}
+  .slot.result .rn{font-size:calc(var(--cw)*.15);line-height:1.1;font-weight:700;word-break:break-word}
+  .hand{display:flex;justify-content:center;gap:clamp(3px,.9vw,8px);padding:22px 0 4px;min-height:calc(var(--cw)*1.4 + 26px)}
+  .controls{display:flex;gap:8px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:6px}
+  .sortg{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-weight:400;font-size:14px}
+  .btn.ic.off{opacity:.45;text-decoration:line-through}
+  .btn.ic{min-width:40px;padding:6px 9px;font-size:16px;line-height:1}
+
+  /* ---------- Market ---------- */
+  .shop h2{margin:0 0 2px;font-size:20px;display:flex;align-items:center;gap:8px}
+  .offers{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0}
+  .offer{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center;padding:8px;background:var(--panel2);border:3px solid var(--edge);border-top:5px solid var(--rc,var(--edge));box-shadow:inset 0 0 0 3px var(--line)}
+  .offer .oe{font-size:32px;line-height:1}
+  .offer .od{font-weight:400;font-size:13px;flex:1}
+  .offer .ot{font-weight:400;font-size:11px;color:var(--muted)}
+  .offer.sold{opacity:.35;justify-content:center;min-height:120px}
+  .books{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:0 0 10px}
+  .book{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:6px 8px;background:var(--panel2);border:3px solid var(--edge);border-left:5px solid var(--rc,var(--edge));box-shadow:inset 0 0 0 3px var(--line)}
+  .book .be{font-size:28px;line-height:1}
+  .book .bt{flex:1 1 110px;min-width:0;display:flex;flex-direction:column;gap:1px;font-size:13px;line-height:1.2}
+  .book .bt .ot,.book .bt .bd{font-weight:400;font-size:12px;color:var(--muted)}
+  .book .bt .bd{color:var(--text)}
+  .book.sold{opacity:.35;justify-content:center;min-height:60px}
+  .shopbtns{align-items:center}
+  .shopbtns .nextinfo{margin-left:auto;font-size:14px}
+  .btn.reroll{display:inline-flex;align-items:center;gap:8px;padding:8px 12px}
+  .btn.reroll svg.rr{width:22px;height:22px}
+  .btn.reroll .rc{display:inline-flex;align-items:center;gap:4px;color:var(--emerald)}
+  .btn.reroll .rc svg{width:16px;height:16px;image-rendering:pixelated}
+  .btn.poor{opacity:.5}
+  .shopbtns{display:flex;gap:10px;flex-wrap:wrap}
+
+  /* ---------- Dialogs ---------- */
+  .modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.72);overflow:auto}
+  .mpanel{width:min(520px,100%);max-height:calc(100vh - 32px);overflow:auto;padding:20px;background:var(--panel);border:4px solid var(--edge);box-shadow:inset 0 0 0 3px var(--line)}
+  .mpanel.wide{width:min(1060px,100%)}
+  .coach{margin-top:12px;padding:12px 14px;background:var(--panel2);border:4px solid var(--gold);box-shadow:inset 0 0 0 3px var(--edge),0 0 0 3px var(--edge)}
+  .coach .ct{font-size:17px;color:var(--gold);margin-bottom:4px}
+  .coach p{margin:0 0 10px;font-weight:400;font-size:15px}
+  .coach .cb{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .coach .cs{margin-left:auto}
+  .card.tuthi:not(.sel){outline:4px solid var(--gold);outline-offset:2px;animation:tutpulse 1s infinite alternate}
+  @keyframes tutpulse{from{box-shadow:0 0 0 0 rgba(255,207,74,0)}to{box-shadow:0 0 14px 4px rgba(255,207,74,.8)}}
+  .diffsel{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:14px 0 4px}
+  .diffinfo{margin:0 0 10px;text-align:center;min-height:1.4em}
+  .mclose{position:sticky;top:0;float:right;z-index:2;width:36px;height:36px;min-height:0;padding:0;margin:-6px -6px 0 8px;font-size:22px;line-height:1;display:grid;place-items:center}
+  .mpanel h2{margin:0 0 10px;font-size:24px}
+  .mpanel p,.mpanel li{font-weight:400}
+  .mpanel ul{padding-left:20px;margin:8px 0 14px}
+  .mpanel .note{margin:8px 0;padding:8px 10px;background:rgba(0,0,0,.25);border:3px solid var(--edge)}
+  .mpanel .mbtns{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  table.rec{width:100%;border-collapse:collapse;font-weight:400;font-size:14px}
+  table.rec td,table.rec th{padding:5px 6px;border-bottom:2px solid var(--line);text-align:left}
+  table.rec td.n{text-align:right;white-space:nowrap}
+  .lines{list-style:none;padding:0!important}
+  .lines li{display:flex;justify-content:space-between;gap:10px;padding:4px 0;border-bottom:2px solid var(--line)}
+  .lines li.sum{border:0;color:var(--emerald);font-weight:700;font-size:18px}
+  .colbar{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px}
+  .colgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+  .jtile{display:flex;flex-direction:column;gap:4px;padding:8px 10px;background:var(--panel2);border:3px solid var(--edge);border-top:5px solid var(--rc,#888);box-shadow:inset 0 0 0 3px var(--line)}
+  .jtile .jt-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+  .jtile .jt-e{font-size:30px;line-height:1}
+  .jtile .jt-badge{font-size:11px;padding:1px 6px;border:2px solid var(--edge);background:var(--rc,#888);color:#111}
+  .jtile .jt-d{font-weight:400;font-size:13px;flex:1}
+  .jtile .jt-m{font-weight:400;font-size:12px;color:var(--muted)}
+  .jtile.found .jt-m b{color:var(--ok)}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,30px);opacity:0;z-index:60;padding:10px 16px;background:#000;border:3px solid var(--gold);pointer-events:none;transition:.2s;max-width:calc(100vw - 32px);text-align:center}
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+
+  @media (max-width:939px){
+    .hud{position:static;padding:8px 12px;gap:6px}
+    .brand{display:none}
+    .hud-btns{margin-left:auto}
+    .layout{padding:10px 12px 40px;gap:10px}
+    .side{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .side .box{margin:0;padding:8px 10px}
+    .side .box:first-child{grid-column:1/-1}
+    .side .rname{font-size:17px;margin:0 0 2px}
+    .side .scorebig{font-size:26px;margin:2px 0}
+    .calc .crow{font-size:20px}
+    .calc .clab .x{font-size:20px}
+    .calc .cname{font-size:14px;margin-bottom:4px}
+    .calc .ctotal{min-height:1.2em;font-size:16px;margin-top:4px}
+    .cnt b{font-size:24px}
+  }
+  @media (max-width:600px){
+    .hand{--cw:min(76px, calc((100vw - 32px - 40px) / 4));flex-wrap:wrap;gap:22px 8px;min-height:0;padding:26px 0 8px}
+    .controls .btn:not(.small){flex:1 1 40%}
+    .hud .pill{padding:2px 6px;font-size:13px;gap:4px}
+    .hud .brand{display:none}
+  }
+  @media (max-height:680px){
+    .offer .od{font-size:12px}
+    .offer{padding:5px 6px;gap:3px}
+    .offer .oe{font-size:24px}
+    .offer .btn{min-height:36px;padding:4px 12px}
+    .shop.box{padding:8px 12px}
+    .offers{margin:6px 0}
+    .books{margin-bottom:6px;gap:6px}
+    .book .btn{min-height:32px}
+  }
+  @media (hover:none){ .keys{display:none} }
+</style>
+</head>
+<body>
+<noscript>This game needs JavaScript.</noscript>
+<div id="app">
+
+  <section id="title" class="screen">
+    <div class="tbox">
+      <div class="logo" id="logo"></div>
+      <h1>BLOCK POKER</h1>
+      <p class="sub">Gather materials, craft recipes, beat the night.</p>
+      <ul class="tlist">
+        <li>Play up to <b>5 material cards</b>. Together they form a <b>recipe</b>.</li>
+        <li>Score = <b style="color:var(--chips)">Chips</b> × <b style="color:var(--mult)">Mult</b>.</li>
+        <li>Reach each round's target before you run out of hands.</li>
+        <li>Buy <b>Jokers</b> and <b>recipe books</b> in the Market.</li>
+      </ul>
+      <div class="diffsel" role="group" aria-label="Difficulty"><span class="muted">Difficulty</span>
+        <button class="btn small" type="button" data-diff="easy">Easy</button><button class="btn small" type="button" data-diff="normal">Normal</button><button class="btn small" type="button" data-diff="hard">Hard</button></div>
+      <p class="muted diffinfo" id="diffInfo"></p>
+      <div class="tbtns">
+        <button class="btn go" id="bStart" type="button">Start game</button>
+        <button class="btn" id="bTutorial" type="button">Tutorial</button>
+        <button class="btn" id="bHelpTitle" type="button">How to play</button>
+        <button class="btn" id="bColTitle" type="button">Collection</button>
+        <button class="btn ic" id="bMusicT" type="button" title="Music" aria-label="Music volume">🎵</button>
+      </div>
+      <div class="record" id="record"></div>
+    </div>
+  </section>
+
+  <section id="game" class="screen" hidden>
+    <header class="hud">
+      <div class="brand">BLOCK POKER</div>
+      <span class="pill" id="hRound"></span>
+      <span class="pill money" id="hMoney"></span>
+      <span class="pill" id="hTime" title="Run time"></span>
+      <div class="hud-btns">
+        <button class="btn small ic" id="bRecipes" type="button" title="Recipes" aria-label="Recipes">📋</button>
+        <button class="btn small ic" id="bCollection" type="button" title="Joker collection" aria-label="Joker collection">🃏</button>
+        <button class="btn small ic" id="bHelp" type="button" title="How to play" aria-label="How to play">❓</button>
+        <button class="btn small ic" id="bMusic" type="button" title="Music" aria-label="Music volume">🎵</button>
+        <button class="btn small ic" id="bSound" type="button" title="Sound on" aria-label="Toggle sound">🔊</button>
+        <button class="btn small warn ic" id="bRestart" type="button" title="Restart" aria-label="Restart">↺</button>
+      </div>
+    </header>
+    <div class="layout">
+      <aside class="side" id="side"></aside>
+      <main class="board">
+        <div class="bossbar" id="bossbar" hidden></div>
+        <div class="jwrap"><div class="jokers" id="jokerbar"></div><div class="jinfo" id="jinfo" hidden></div></div>
+        <div id="roundview">
+          <div class="bench" id="bench"></div>
+          <div class="hand" id="hand"></div>
+          <div class="controls">
+            <button class="btn go" id="bPlay" type="button">Craft</button>
+            <button class="btn warn" id="bDiscard" type="button">Discard</button>
+            <span class="sortg">Sort <button class="btn small" id="bSortVal" type="button">Value</button><button class="btn small" id="bSortMat" type="button">Material</button></span>
+            <button type="button" class="info" id="bKeys" aria-label="Keyboard shortcuts" title="Keyboard shortcuts">i</button>
+          </div>
+        </div>
+        <div id="shopview" hidden></div>
+      </main>
+    </div>
+  </section>
+
+  <div id="modal" class="modal" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* =====================================================================
+   Helpers
+   ===================================================================== */
+const $ = (s, r) => (r || document).querySelector(s);
+const params = new URLSearchParams(location.search);
+const TEST = params.has('test');
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+let rng = params.has('seed') ? mulberry32(parseInt(params.get('seed'),10)||1) : Math.random;
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(rng()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
+};
+function fmt(x){ return Number.isInteger(x) ? String(x) : String(+x.toFixed(2)); }
+function num(n){ return n.toLocaleString('en-US'); }
+
+/* =====================================================================
+   Pixel art (hand-drawn, 8x8)
+   ===================================================================== */
+const PIX = {
+  holz:{pal:{W:'#c9964f',w:'#9a6a30',x:'#6e4a1f'},map:[
+    'WWWWWWWW','WwWWWWwW','xxxxxxxx','WWWWwWWW','WWwWWWWW','xxxxxxxx','WWWWWWWW','WwWWWwWW']},
+  stock:{pal:{S:'#c58a3f',x:'#6b4420'},map:[
+    '.....xSS','....xSSx','...xSSx.','..xSSx..','.xSSx...','xSSx....','SSx.....','Sx......']},
+  stein:{pal:{a:'#a9aeb4',b:'#7d838a',c:'#565b61'},map:[
+    'abbaaabb','bcabbaca','aabaacab','bbacbaaa','acaabbca','abbacaab','bcaabbac','aabcaaba']},
+  eisen:{pal:{o:'#4b4b52',i:'#ffffff',I:'#d9d9de',g:'#9a9aa3'},map:[
+    '........','..oooooo','.oiIIIIo','oiIIIIgo','oIIIIggo','oggggoo.','.oooo...','........']},
+  gold:{pal:{o:'#7a5410',i:'#fff1a6',I:'#f6c72c',g:'#c18a12'},map:[
+    '........','..oooooo','.oiIIIIo','oiIIIIgo','oIIIIggo','oggggoo.','.oooo...','........']},
+  diamant:{pal:{k:'#16929c',C:'#43e6ee',w:'#eaffff'},map:[
+    '..kkkk..','.kCCCCk.','kCwwCCCk','kCwCCCCk','.kCCCCk.','..kCCk..','...kk...','........']},
+  smaragd:{pal:{k:'#12853f',C:'#2fe07a',w:'#d8ffe6'},map:[
+    '..kkkk..','.kCCCCk.','kCwwCCCk','kCwCCCCk','.kCCCCk.','..kCCk..','...kk...','........']}
+};
+const iconCache = {};
+function icon(name){
+  if(iconCache[name]) return iconCache[name];
+  const p = PIX[name]; let r='';
+  for(let y=0;y<8;y++) for(let x=0;x<8;x++){
+    const ch=p.map[y][x]; if(ch==='.') continue;
+    r += '<rect x="'+x+'" y="'+y+'" width="1" height="1" fill="'+p.pal[ch]+'"/>';
+  }
+  return iconCache[name] = '<svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true">'+r+'</svg>';
+}
+
+/* =====================================================================
+   Game data
+   (internal material ids stay as they are; only the displayed names are English)
+   ===================================================================== */
+const MATS = {
+  holz:   {name:'Wood',    chips:2},
+  stock:  {name:'Stick',   chips:3},
+  stein:  {name:'Stone',   chips:5},
+  eisen:  {name:'Iron',    chips:8},
+  gold:   {name:'Gold',    chips:11},
+  diamant:{name:'Diamond', chips:15}
+};
+const MAT_ORDER = ['holz','stock','stein','eisen','gold','diamant'];
+const COPIES = {holz:9, stock:8, stein:9, eisen:8, gold:8, diamant:6};   // 48 cards, Diamonds are the rarest
+const HAND_SIZE = 8;
+const MAX_SEL = 5;
+const MAX_JOKERS = 5;
+
+const HANDS = {
+  high:        {name:'Raw Material',   emoji:'🪨', chips:5,  mult:1, lc:10, lm:1, info:'Any single card (the most valuable one scores)'},
+  pair:        {name:'Stack',          emoji:'📦', chips:10, mult:2, lc:15, lm:1, info:'2 of the same material'},
+  twopair:     {name:'Double Stack',   emoji:'🗃️', chips:20, mult:2, lc:20, lm:1, info:'2 + 2 of the same material'},
+  three:       {name:'Ingot',          emoji:'🧱', chips:30, mult:3, lc:20, lm:2, info:'3 of the same material'},
+  holzsword:   {name:'Wooden Sword',   emoji:'🗡️', chips:20, mult:3, lc:15, lm:2, info:'2 Wood + 1 Stick'},
+  steinsword:  {name:'Stone Sword',    emoji:'🗡️', chips:30, mult:4, lc:20, lm:2, info:'2 Stone + 1 Stick'},
+  ladder:      {name:'Ladder',         emoji:'🪜', chips:35, mult:4, lc:20, lm:2, info:'3 or more Sticks'},
+  eisensword:  {name:'Iron Sword',     emoji:'🗡️', chips:40, mult:4, lc:25, lm:2, info:'2 Iron + 1 Stick'},
+  house:       {name:'Workbench',      emoji:'🛠️', chips:40, mult:4, lc:25, lm:2, info:'3 + 2 of the same material'},
+  goldsword:   {name:'Golden Sword',   emoji:'🗡️', chips:50, mult:5, lc:25, lm:3, info:'2 Gold + 1 Stick'},
+  set:         {name:'Full Set',       emoji:'🎽', chips:50, mult:5, lc:25, lm:3, info:'1 each of Wood, Stone, Iron, Gold, Diamond'},
+  four:        {name:'Block',          emoji:'🧊', chips:60, mult:7, lc:30, lm:3, info:'4 of the same material'},
+  diamantsword:{name:'Diamond Sword',  emoji:'⚔️', chips:60, mult:6, lc:30, lm:3, info:'2 Diamond + 1 Stick'}
+};
+const HAND_ORDER = Object.keys(HANDS);
+
+function handStats(type, lv){
+  const d = HANDS[type];
+  return { chips: d.chips + (lv-1)*d.lc, mult: d.mult + (lv-1)*d.lm };
+}
+
+const FULL_SET = ['holz','stein','eisen','gold','diamant'];
+const SWORD_MATS = ['holz','stein','eisen','gold','diamant'];
+
+/* Finds the best recipe for the played cards. levels: optional recipe levels. */
+function evaluate(cards, levels){
+  const lv = t => (levels && levels[t]) || 1;
+  const by = {};
+  cards.forEach(c => { (by[c.mat] = by[c.mat] || []).push(c); });
+  const cnt = m => (by[m] || []).length;
+  const groups = Object.values(by).sort((a,b) => b.length - a.length || b[0].chips - a[0].chips);
+  const cs = groups.map(g => g.length);
+  const cands = [];
+  const add = (type, sc) => cands.push({type, scoring: sc});
+
+  const best = cards.reduce((a,c) => c.chips > a.chips ? c : a, cards[0]);
+  add('high', [best]);
+  if(cs[0] >= 2) add('pair', groups[0].slice(0,2));
+  if(cs[0] >= 2 && cs[1] >= 2) add('twopair', groups[0].slice(0,2).concat(groups[1].slice(0,2)));
+  if(cs[0] >= 3) add('three', groups[0].slice(0,3));
+  if(cs[0] >= 3 && cs[1] >= 2) add('house', groups[0].slice(0,3).concat(groups[1].slice(0,2)));
+  if(cs[0] >= 4) add('four', groups[0].slice(0,4));
+  if(cnt('stock') >= 3) add('ladder', by.stock.slice());
+  if(cards.length === 5 && FULL_SET.every(m => cnt(m) === 1)) add('set', cards.slice());
+  SWORD_MATS.forEach(m => {
+    if(cnt(m) >= 2 && cnt('stock') >= 1) add(m + 'sword', by[m].concat([by.stock[0]]));
+  });
+
+  let pick = cands[0], pv = -1;
+  cands.forEach(c => {
+    const s = handStats(c.type, lv(c.type));
+    const v = s.chips * s.mult;
+    if(v > pv){ pv = v; pick = c; }
+  });
+  const scoring = cards.filter(c => pick.scoring.indexOf(c) !== -1);
+  return { type: pick.type, scoring: scoring, hasPair: cs[0] >= 2 };
+}
+
+/* ---------- Jokers ----------
+   tag:        chips | mult | xmult | retrigger | economy | utility
+   onCard:     (card, ctx, self) -> {chips, mult, xmult} | null      (runs for every scoring pass of a card)
+   onHand:     (ctx, self)       -> {chips, mult, xmult} | null      (runs once after all cards)
+   retrigger:  (card, ctx, indexInScoring, scoringCount) -> number of extra passes for this card
+   Bonuses:    hands, discards, slots, handSize, discount, shopSlots, freeReroll, interestCap, playMoney, endMoney,
+               packOptions, bookDiscount, rerollDiscount, sellBonus   (onDiscard(self), onRoundWin(self) may return a message)
+*/
+const MATS_IN = (c, ...m) => m.indexOf(c.mat) !== -1;
+const JOKERS = [
+  /* --- classics --- */
+  {id:'schwein', tag:'utility', emoji:'🐷', name:'Piglet', cost:6, desc:'+1 hand each round.', hands:1},
+  {id:'kuh', tag:'utility', emoji:'🐮', name:'Cow', cost:5, desc:'+1 discard each round.', discards:1},
+  {id:'zombie', tag:'chips', emoji:'🧟', name:'Zombie', cost:4, desc:'+30 Chips on every recipe.', onHand:()=>({chips:30})},
+  {id:'schleim', tag:'mult', emoji:'🟢', name:'Slime', cost:4, desc:'+4 Mult on every recipe.', onHand:()=>({mult:4})},
+  {id:'skelett', tag:'mult', emoji:'💀', name:'Skeleton', cost:5, desc:'+10 Mult if the hand has two of the same material.', onHand:c=>c.hasPair?{mult:10}:null},
+  {id:'drache', tag:'mult', emoji:'🐉', name:'Dragon', cost:6, desc:'5 gambles per hand: 50% +40 Chips, 35% +8 Mult, 20% ×2 Mult, 25% +3 emeralds, 10% recipe +1 level.',
+    onHand:(c)=>{
+      const roll = (p, win, lose) => rng() < p ? win : {note:lose};
+      return [roll(.5, {chips:40, note:'+40 Chips'}, 'Miss'), roll(.35, {mult:8}, 'Miss'), roll(.2, {xmult:2}, 'Miss'),
+              roll(.25, {money:3, note:'+3 💎'}, 'Miss'), roll(.1, {levelUp:true, note:'Level up!'}, 'Miss')];
+    }},
+  {id:'hexe', tag:'xmult', emoji:'🧙', name:'Witch', cost:6, desc:'×1.5 Mult on every Sword recipe.', onHand:c=>/sword$/.test(c.type)?{xmult:1.5}:null},
+  {id:'dorf', tag:'economy', emoji:'🧑‍🌾', name:'Villager', cost:5, desc:'+4 emeralds at the end of every round.', endMoney:4},
+  {id:'fuchs', tag:'mult', emoji:'🦊', name:'Fox', cost:5, desc:'+3 Mult for every discard left.', onHand:c=>c.discardsLeft>0?{mult:3*c.discardsLeft}:null},
+  {id:'biene', tag:'mult', emoji:'🐝', name:'Bee', cost:5, desc:'Every scoring card: +2 Mult.', onCard:()=>({mult:2})},
+  {id:'waechter', tag:'xmult', emoji:'🛡️', name:'Guardian', cost:6, desc:'×2 Mult on the last hand of a round.', onHand:c=>c.handsLeft===0?{xmult:2}:null},
+  {id:'holzfaeller', tag:'mult', emoji:'🪓', name:'Lumberjack', cost:4, desc:'Scoring Wood: +4 Mult.', onCard:k=>k.mat==='holz'?{mult:4}:null},
+  {id:'tischler', tag:'mult', emoji:'🪚', name:'Carpenter', cost:4, desc:'Scoring Sticks: +3 Mult.', onCard:k=>k.mat==='stock'?{mult:3}:null},
+  {id:'bergmann', tag:'chips', emoji:'⛏️', name:'Miner', cost:4, desc:'Scoring Stone: +30 Chips.', onCard:k=>k.mat==='stein'?{chips:30}:null},
+  {id:'schmied', tag:'mult', emoji:'🔨', name:'Blacksmith', cost:5, desc:'Scoring Iron: +3 Mult and +15 Chips.', onCard:k=>k.mat==='eisen'?{mult:3,chips:15}:null},
+  {id:'goldgraeber', tag:'mult', emoji:'🪙', name:'Prospector', cost:5, desc:'Scoring Gold: +5 Mult.', onCard:k=>k.mat==='gold'?{mult:5}:null},
+  {id:'juwelier', tag:'mult', emoji:'💎', name:'Jeweler', cost:6, desc:'Scoring Diamond: +6 Mult.', onCard:k=>k.mat==='diamant'?{mult:6}:null},
+  {id:'papagei', tag:'chips', emoji:'🦀', name:'Hermit Crab', cost:4, desc:'+40 Chips if you play only 1 card.', onHand:c=>c.cards.length===1?{chips:40}:null},
+  {id:'katze', tag:'mult', emoji:'🐱', name:'Cat', cost:5, desc:'+3 Mult for every hand left.', onHand:c=>c.handsLeft>0?{mult:3*c.handsLeft}:null},
+  {id:'wolf', tag:'xmult', emoji:'🐺', name:'Wolf', cost:6, desc:'×1.5 Mult if every played card scores.', onHand:c=>c.scoring.length===c.cards.length?{xmult:1.5}:null},
+  {id:'baer', tag:'chips', emoji:'🐻', name:'Bear', cost:5, desc:'+15 Chips for every card played.', onHand:c=>({chips:15*c.cards.length})},
+  {id:'eule', tag:'mult', emoji:'🦉', name:'Owl', cost:5, desc:'+8 Mult if you play 4 or more cards.', onHand:c=>c.cards.length>=4?{mult:8}:null},
+  {id:'frosch', tag:'economy', emoji:'🐸', name:'Frog', cost:5, desc:'+1 emerald for every discard left at the end of a round.', endMoneyFn:g=>g.discardsLeft},
+  {id:'haendler', tag:'economy', emoji:'🧳', name:'Traveling Merchant', cost:6, desc:'Everything in the Market costs 1 less (minimum 1).', discount:1},
+  {id:'lasttier', tag:'utility', emoji:'🦙', name:'Llama', cost:7, desc:'+2 Joker slots.', slots:2},
+  {id:'architekt', tag:'mult', emoji:'🏗️', name:'Architect', cost:5, desc:'+12 Mult on Workbench or Double Stack.', onHand:c=>(c.type==='house'||c.type==='twopair')?{mult:12}:null},
+  {id:'kletterer', tag:'xmult', emoji:'🧗', name:'Climber', cost:5, desc:'×3 Mult on Ladder.', onHand:c=>c.type==='ladder'?{xmult:3}:null},
+  {id:'sammler', tag:'mult', emoji:'🎒', name:'Collector', cost:5, desc:'+2 Mult for every recipe level you bought.', onHand:c=>c.bookLevels>0?{mult:2*c.bookLevels}:null},
+  {id:'phoenix', tag:'mult', emoji:'🔥', name:'Phoenix', cost:4, desc:'+12 Mult on the first hand of a round.', onHand:c=>c.firstHand?{mult:12}:null},
+  {id:'hamster', tag:'mult', emoji:'🐹', name:'Hamster', cost:5, desc:'+4 Mult for every card you keep in hand.', onHand:c=>c.held>0?{mult:4*c.held}:null},
+  {id:'kuerbis', tag:'mult', emoji:'🎃', name:'Pumpkin', cost:5, desc:'+15 Mult if you play exactly 3 cards.', onHand:c=>c.cards.length===3?{mult:15}:null},
+
+  /* --- retrigger jokers: a card scores again, and every card joker fires again with it --- */
+  {id:'parrot', tag:'retrigger', emoji:'🦜', name:'Parrot', cost:6, desc:'Retriggers the first scoring card.', retrigger:(k,c,i)=>i===0?1:0},
+  {id:'mirror', tag:'retrigger', emoji:'🪞', name:'Mirror Pond', cost:5, desc:'Retriggers the last scoring card.', retrigger:(k,c,i,n)=>i===n-1?1:0},
+  {id:'echobat', tag:'retrigger', emoji:'🦇', name:'Echo Bat', cost:5, desc:'Retriggers every scoring Stone card.', retrigger:k=>k.mat==='stein'?1:0},
+  {id:'forgebell', tag:'retrigger', emoji:'🔔', name:'Forge Bell', cost:5, desc:'Retriggers every scoring Iron card.', retrigger:k=>k.mat==='eisen'?1:0},
+  {id:'midas', tag:'retrigger', emoji:'👑', name:'Midas Touch', cost:6, desc:'Retriggers every scoring Gold card.', retrigger:k=>k.mat==='gold'?1:0},
+  {id:'gemcutter', tag:'retrigger', emoji:'💠', name:'Gemcutter', cost:6, desc:'Retriggers every scoring Diamond card.', retrigger:k=>k.mat==='diamant'?1:0},
+  {id:'lumbermill', tag:'retrigger', emoji:'🪵', name:'Lumber Mill', cost:5, desc:'Retriggers every scoring Wood and Stick card.', retrigger:k=>(k.mat==='holz'||k.mat==='stock')?1:0},
+
+  /* --- growing, lucky and odd jokers --- */
+  {id:'snowball', tag:'mult', emoji:'⛄', name:'Snowball Golem', cost:5, desc:'Gains +2 Mult for every round you win (all run).',
+    onHand:(c,s)=>s.n>0?{mult:2*s.n}:null, onRoundWin:s=>{ s.n++; }, dyn:s=>'now +' + 2*s.n + ' Mult'},
+  {id:'packrat', tag:'chips', emoji:'🐀', name:'Pack Rat', cost:4, desc:'Gains +4 Chips for every discard you use (all run).',
+    onHand:(c,s)=>s.n>0?{chips:4*s.n}:null, onDiscard:s=>{ s.n++; }, dyn:s=>'now +' + 4*s.n + ' Chips'},
+  {id:'clover', tag:'mult', emoji:'🍀', name:'Lucky Clover', cost:5, desc:'Every scoring card has a 1 in 4 chance of +10 Mult.', onCard:()=>rng()<0.25?{mult:10}:null},
+  {id:'dice', tag:'xmult', emoji:'🎲', name:"Gambler's Dice", cost:6, desc:'1 in 5 chance of ×4 Mult on every hand.', onHand:()=>rng()<0.2?{xmult:4}:null},
+  {id:'compass', tag:'chips', emoji:'🧭', name:'Compass', cost:4, desc:'+20 Chips per card if you play 2+ cards that are all different materials.',
+    onHand:c=>(c.cards.length>=2 && new Set(c.cards.map(k=>k.mat)).size===c.cards.length)?{chips:20*c.cards.length}:null},
+  {id:'tortoise', tag:'mult', emoji:'🐢', name:'Tortoise', cost:5, desc:"+3 Mult for every hand you've played this round (including this one).", onHand:c=>({mult:3*c.handNo})},
+  {id:'alchemist', tag:'xmult', emoji:'⚗️', name:'Alchemist', cost:6, desc:'×1.25 Mult for every different material you play.',
+    onHand:c=>({xmult:Math.pow(1.25, new Set(c.cards.map(k=>k.mat)).size)})},
+  {id:'moon', tag:'mult', emoji:'🌙', name:'Moon Phase', cost:5, desc:'Odd rounds: +30 Chips. Even rounds: ×1.5 Mult.', onHand:c=>(c.roundNo%2===1)?{chips:30}:{xmult:1.5}},
+  {id:'idol', tag:'xmult', emoji:'🗿', name:'Cursed Idol', cost:6, desc:'×3 Mult on every hand, but you get 1 less discard each round.', discards:-1, onHand:()=>({xmult:3})},
+  {id:'well', tag:'economy', emoji:'⛲', name:'Wishing Well', cost:5, desc:'+1 emerald every time you play a hand.', playMoney:1},
+  {id:'rabbit', tag:'economy', emoji:'🐇', name:"Rabbit's Foot", cost:4, desc:'Your first reroll in every Market is free.', freeReroll:1},
+  {id:'banker', tag:'economy', emoji:'🏦', name:'Banker', cost:6, desc:'Interest cap rises from 5 to 10 emeralds.', interestCap:5},
+  {id:'kangaroo', tag:'utility', emoji:'🦘', name:'Kangaroo', cost:7, desc:'+3 hand size.', handSize:3},
+  {id:'map', tag:'utility', emoji:'🗺️', name:'Treasure Map', cost:6, desc:'+1 Joker offer in every Market.', shopSlots:1},
+  /* --- books & money --- */
+  {id:'archivist', tag:'utility', emoji:'📚', name:'Archivist', cost:6, desc:'Every 2nd round you win, your most-crafted recipe gains a level.',
+    dyn:j=>'next level in ' + (2 - j.n % 2) + (j.n % 2 === 1 ? ' win' : ' wins'),
+    onRoundWin:j=>{ j.n++; if(j.n % 2 === 0){ const k = mostCrafted(); G.handLevels[k]++; return 'Archivist: ' + BOOKS[k] + '. ' + HANDS[k].name + ' is now level ' + G.handLevels[k] + '.'; } }},
+  {id:'bookmark', tag:'utility', emoji:'🔖', name:'Bookmark', cost:6, desc:'Every bundle in the Market has 1 extra choice.', packOptions:1},
+  {id:'bookbinder', tag:'economy', emoji:'🧵', name:'Bookbinder', cost:5, desc:'Bundles cost 1 less (minimum 1).', bookDiscount:1},
+  {id:'scrapyard', tag:'economy', emoji:'♻️', name:'Scrapyard', cost:4, desc:'+1 emerald every time you discard.', onDiscard:()=>{ G.money += 1; }},
+  {id:'haggler', tag:'economy', emoji:'🤝', name:'Haggler', cost:4, desc:'Rerolls start at 1 emerald instead of 2.', rerollDiscount:1},
+  {id:'landlord', tag:'economy', emoji:'🏠', name:'Landlord', cost:6, desc:'+1 emerald at the end of a round for every joker you own (itself included).', endMoneyFn:g=>g.jokers.length},
+  {id:'chest', tag:'economy', emoji:'🧰', name:"Hoarder's Chest", cost:5, desc:'+3 emeralds at the end of a round if you did not discard.',
+    endMoneyFn:g=>g.discardsLeft >= Math.max(0, baseDiscards() + bonus('discards')) ? 3 : 0},
+  {id:'pawn', tag:'economy', emoji:'🏪', name:'Pawnbroker', cost:4, desc:'Jokers sell for 3 more emeralds.', sellBonus:3},
+  /* --- more legendary jokers --- */
+  {id:'stone', tag:'xmult', emoji:'🔮', name:"Philosopher's Stone", cost:8, desc:'×3 Mult on every hand, and +1 hand every round.', hands:1, onHand:()=>({xmult:3})},
+  {id:'crown', tag:'retrigger', emoji:'👑', name:'Echo Crown', cost:8, desc:'Every card you play scores, and retriggers once, even cards outside the recipe.', allCards:true, retrigger:()=>1},
+  {id:'egg', tag:'economy', emoji:'🥚', name:'Golden Egg', cost:8, desc:'+6 emeralds at the end of every round and +1 emerald for every hand you play.', endMoney:6, playMoney:1},
+  {id:'library', tag:'utility', emoji:'🏛️', name:'Grand Library', cost:6, desc:'The hand that beats the round levels up its recipe.',
+    onPlayed:(type,first)=>{ if(!first) return null; G.handLevels[type]++; return 'Grand Library: ' + HANDS[type].name + ' is now level ' + G.handLevels[type] + '.'; }},
+  {id:'colossus', tag:'xmult', emoji:'🏔️', name:'Mountain King', cost:8, desc:'×1 Mult, and +×0.1 more for every Diamond you discard (all run).',
+    dyn:j=>'now ×' + fmt(1 + 0.1 * j.n), onHand:(c,j)=>j.n>0?{xmult:Math.round((1 + 0.1 * j.n) * 100) / 100}:null,
+    onDiscard:(j,cards)=>{ j.n += (cards || []).filter(c => c.mat === 'diamant').length; }},
+  {id:'hourglass', tag:'utility', emoji:'⌛', name:'Eternal Hourglass', cost:8, desc:'+2 hands and +1 discard every round.', hands:2, discards:1}
+];
+/* Names of the recipe books (one per recipe) */
+const SWORD_HANDS = ['holzsword','steinsword','eisensword','goldsword','diamantsword'];
+const PACKS = {
+  small:{name:'Recipe Pack', emoji:'📘', n:3, cost:4, chance:1,   note:'Pick 1 of 3 recipe books'},
+  grand:{name:'Grand Pack',  emoji:'📕', n:5, cost:7, chance:.35, note:'Pick 1 of 5 recipe books'},
+  sword:{name:'Sword Pack',  emoji:'🗡️', n:3, cost:4, chance:.30, note:'Pick 1 of 3 sword books', pool:SWORD_HANDS}
+};
+const BOOKS = {
+  high:"Scavenger's Notes", pair:"Stacker's Guide", twopair:"Twin-Stack Ledger", three:"Smelter's Handbook",
+  holzsword:"Whittler's Manual", steinsword:"Quarryman's Primer", ladder:"Climber's Journal", eisensword:"Forgemaster's Treatise",
+  house:"Builder's Blueprints", goldsword:"Gilded Codex", set:"Collector's Atlas", four:"Cubist's Compendium", diamantsword:"Diamond Edge Grimoire"
+};
+const JOKER_BY_ID = {};
+JOKERS.forEach(j => { JOKER_BY_ID[j.id] = j; });
+const TAGS = [['all','All'],['chips','Chips'],['mult','Mult'],['xmult','×Mult'],['retrigger','Retrigger'],['economy','Economy'],['utility','Utility']];
+const TAG_NAME = {chips:'Chips', mult:'Mult', xmult:'×Mult', retrigger:'Retrigger', economy:'Economy', utility:'Utility'};
+
+function rarityOf(j){ return j.cost <= 4 ? 'common' : j.cost === 5 ? 'uncommon' : j.cost === 6 ? 'rare' : 'legendary'; }
+const RARITY_NAME = {common:'Common', uncommon:'Uncommon', rare:'Rare', legendary:'Legendary'};
+function makeJoker(def){ const j = Object.assign({}, def); j.n = 0; return j; }
+
+/* ---------- Rounds ---------- */
+const ROUNDS = [
+  {name:'First Night',        target:300,   reward:3},
+  {name:'Deep Cave',          target:550,   reward:3},
+  {name:'Abandoned Mine',     target:1100,   reward:4},
+  {name:'Frozen Peaks',       target:2000,  reward:5},
+  {name:'Mushroom Forest',    target:3800,  reward:4},
+  {name:'Lava Lake',          target:7000,  reward:4},
+  {name:'Deep Fortress',      target:12500,  reward:5},
+  {name:'The Void Gate',      target:20000, reward:0}
+];
+/* Optional boss challenges: offered in the Market after round (after+1). Win = prize, lose = lose half your emeralds (no game over). */
+const BOSSES = [
+  {id:'bone',   after:1, title:'Bone Lord',          name:'Boss: Bone Lord',          emoji:'💀', target:5000, reward:0,
+    boss:{debuff:'stein', text:'Stone is weakened: Stone cards score no chips and trigger no jokers.'},
+    prize:'+10 emeralds and +2 levels for your most-crafted recipe.'},
+  {id:'golem',  after:3, title:'Lava Golem',         name:'Boss: Lava Golem',         emoji:'🌋', target:11500, reward:0,
+    boss:{debuff:'eisen', text:'Iron is weakened: Iron cards score no chips and trigger no jokers.'},
+    prize:'Choose 1 of 3 Legendary jokers for free (you need a free joker slot, otherwise you get +15 emeralds, so sell one first if you want it).'},
+  {id:'dragon', after:5, title:'Dragon of the Void', name:'Boss: Dragon of the Void', emoji:'🐲', target:16000, reward:0,
+    boss:{debuff:'diamant', handsMinus:1, text:'Diamond is weakened and you have 1 hand less.'},
+    prize:'+1 level on EVERY recipe and +20 emeralds.'}
+];
+
+/* =====================================================================
+   State
+   ===================================================================== */
+let G = null;
+let muted = store.get('blockpoker.muted') === '1';
+let found = new Set();
+try{ found = new Set(JSON.parse(store.get('blockpoker.found') || '[]')); }catch(e){ found = new Set(); }
+function markFound(id){
+  if(found.has(id)) return;
+  found.add(id);
+  store.set('blockpoker.found', JSON.stringify(Array.from(found)));
+}
+
+function makeDeck(){
+  const d = []; let id = 0;
+  MAT_ORDER.forEach(m => { for(let k=0;k<COPIES[m];k++) d.push({id:id++, mat:m, chips:MATS[m].chips}); });
+  return d;
+}
+
+function newRun(d){
+  d = DIFFS[d] ? d : (G && G.diff) || diff;
+  applyDifficulty(d);
+  const lv = {}; HAND_ORDER.forEach(k => { lv[k] = 1; });
+  const prevSort = G ? G.sort : 'val';
+  G = {
+    roundIdx:0, money:4, jokers:[], handLevels:lv,
+    draw:[], hand:[], playing:[], selected:new Set(),
+    handsLeft:0, handsTotal:0, discardsLeft:0, score:0, shownScore:0, boss:null,
+    phase:'play', sort:prevSort, selJoker:null, fast:false,
+    calc:idleCalc(), shopOffers:[], rerollCost:2, rerollsThisShop:0, crafted:{}, bossFight:null, bossDone:{}, pity:0, pendingPick:null, pendingPack:null, popJ:null,
+    diff:d, ms:0, clock:true
+  };
+  startRound(0);
+}
+
+function idleCalc(){ return {name:'Select cards', emoji:'', type:null, chips:0, mult:0, total:null}; }
+function bonus(key){ return G.jokers.reduce((s,j) => s + (j[key] || 0), 0); }
+function maxJokers(){ return MAX_JOKERS + bonus('slots'); }
+function handSize(){ return HAND_SIZE + bonus('handSize'); }
+function price(cost){ return Math.max(1, cost - bonus('discount')); }
+const DIFFS = {
+  easy:   {name:'Easy',   mult:0.7,  info:'Targets ×0.7 and +1 hand every round.'},
+  normal: {name:'Normal', mult:1,    info:'The standard game.'},
+  hard:   {name:'Hard',   mult:1.2,  info:'Targets ×1.2 and 1 fewer discard every round.'}
+};
+let diff = store.get('blockpoker.diff'); if(!DIFFS[diff]) diff = 'normal';
+function applyDifficulty(d){
+  const m = DIFFS[d].mult, sc = o => { if(!o.base) o.base = o.target; o.target = Math.max(100, Math.round(o.base * m / 50) * 50); };
+  ROUNDS.forEach(sc); BOSSES.forEach(sc);
+}
+function baseHands(){ return 4 + (G && G.diff === 'easy' ? 1 : 0); }
+function baseDiscards(){ return 3 - (G && G.diff === 'hard' ? 1 : 0); }
+const bestKey = d => d === 'normal' ? 'blockpoker.best' : 'blockpoker.best.' + d;
+const timeKey = d => 'blockpoker.time.' + d;
+function fmtTime(ms){
+  const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, s = t % 60;
+  return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0');
+}
+function curRound(){ return G.bossFight || ROUNDS[G.roundIdx]; }
+function packPrice(o){ return Math.max(1, price(o.cost) - bonus('bookDiscount')); }
+const bookPrice = packPrice;
+function sellValue(j){ return Math.floor(j.cost / 2) + bonus('sellBonus'); }
+function mostCrafted(){
+  let best = null, bn = 0;
+  HAND_ORDER.forEach(k => { const n = G.crafted[k] || 0; if(n > bn){ bn = n; best = k; } });
+  return best || HAND_ORDER[Math.floor(rng() * HAND_ORDER.length)];
+}
+function infoBtn(text, extra){
+  const t = String(text).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  return '<button type="button" class="info' + (extra ? ' ' + extra : '') + '" data-info="' + t + '" title="' + t + '" aria-label="' + t + '">i</button>';
+}
+function rerollPrice(){ return (G.rerollsThisShop === 0 && bonus('freeReroll') > 0) ? 0 : G.rerollCost; }
+
+function startRound(i, bf){
+  const r = bf || ROUNDS[i];
+  G.roundIdx = i; G.bossFight = bf || null; G.boss = r.boss || null;
+  G.handsLeft = Math.max(1, baseHands() + bonus('hands') - ((G.boss && G.boss.handsMinus) || 0));
+  G.handsTotal = G.handsLeft;
+  G.discardsLeft = Math.max(0, baseDiscards() + bonus('discards'));
+  G.score = 0; G.shownScore = 0; G.playing = []; G.selected = new Set(); G.hand = [];
+  G.draw = shuffle(makeDeck());
+  drawUp();
+  G.phase = 'play'; G.selJoker = null; G.calc = idleCalc();
+  closeModal();
+  showScreen('game');
+  render();
+}
+
+function sortHand(){
+  if(G.sort === 'mat') G.hand.sort((a,b) => MAT_ORDER.indexOf(a.mat) - MAT_ORDER.indexOf(b.mat) || a.id - b.id);
+  else G.hand.sort((a,b) => b.chips - a.chips || MAT_ORDER.indexOf(a.mat) - MAT_ORDER.indexOf(b.mat) || a.id - b.id);
+}
+function drawUp(){
+  while(G.hand.length < handSize() && G.draw.length) G.hand.push(G.draw.pop());
+  sortHand();
+}
+function selectedCards(){ return Array.from(G.selected).map(id => G.hand.find(c => c.id === id)).filter(Boolean); }   // in the order you clicked them
+
+function updatePreview(){
+  if(G.phase !== 'play') return;
+  const sel = selectedCards();
+  if(!sel.length){ G.calc = idleCalc(); return; }
+  const ev = evaluate(sel, G.handLevels);
+  const lv = G.handLevels[ev.type], st = handStats(ev.type, lv);
+  G.calc = {name: HANDS[ev.type].name + ' Lv.' + lv, emoji: HANDS[ev.type].emoji, type: ev.type, chips: st.chips, mult: st.mult, total: null};
+}
+
+/* =====================================================================
+   Scoring
+   ===================================================================== */
+function scoreHand(cards){
+  const ev = evaluate(cards, G.handLevels);
+  const lv = G.handLevels[ev.type], def = HANDS[ev.type];
+  const st = handStats(ev.type, lv);
+  let chips = st.chips, mult = st.mult;
+  const steps = [{kind:'base', chips:chips, mult:mult}];
+  const debuff = G.boss && G.boss.debuff;
+  const held = G.hand.filter(c => cards.indexOf(c) === -1).length;
+  const bookLevels = HAND_ORDER.reduce((s, k) => s + (G.handLevels[k] - 1), 0);
+  const ctx = {type:ev.type, cards:cards, scoring:ev.scoring, handsLeft:G.handsLeft, discardsLeft:G.discardsLeft, hasPair:ev.hasPair,
+    held:held, bookLevels:bookLevels, firstHand:(G.handsTotal - G.handsLeft) === 1, handNo:(G.handsTotal - G.handsLeft), roundNo:G.roundIdx + 1};
+
+  function apply(e, jokerIdx, cardId){
+    if(Array.isArray(e)){ e.forEach(x => apply(x, jokerIdx, cardId)); return; }
+    const s = {kind:'joker', jokerIdx:jokerIdx, cardId:cardId, dChips:0, dMult:0, xMult:1};
+    if(e.note) s.note = e.note;
+    if(e.money) s.dMoney = e.money;
+    if(e.levelUp) s.levelUp = true;
+    if(e.chips){ chips += e.chips; s.dChips = e.chips; }
+    if(e.mult){ mult += e.mult; s.dMult = e.mult; }
+    if(e.xmult){ mult *= e.xmult; s.xMult = e.xmult; }
+    s.chips = chips; s.mult = mult; steps.push(s);
+  }
+
+  const scoreList = G.jokers.some(j => j.allCards) ? cards : ev.scoring;   // Echo Crown: every played card scores
+  scoreList.forEach((c, ci) => {
+    if(c.mat === debuff){
+      steps.push({kind:'card', cardId:c.id, debuffed:true, dChips:0, chips:chips, mult:mult});
+      return;
+    }
+    // who retriggers this card?
+    const sources = [];
+    G.jokers.forEach((j, i) => {
+      if(j.retrigger){
+        const n = j.retrigger(c, ctx, ci, scoreList.length) || 0;
+        for(let k = 0; k < n; k++) sources.push(i);
+      }
+    });
+    for(let rep = 0; rep <= sources.length; rep++){
+      if(rep > 0) steps.push({kind:'retrigger', jokerIdx:sources[rep - 1], cardId:c.id, chips:chips, mult:mult});
+      chips += c.chips;
+      steps.push({kind:'card', cardId:c.id, dChips:c.chips, chips:chips, mult:mult, again:rep > 0});
+      G.jokers.forEach((j, i) => {
+        if(j.onCard){ const e = j.onCard(c, ctx, j); if(e) apply(e, i, c.id); }
+      });
+    }
+  });
+  G.jokers.forEach((j, i) => {
+    if(j.onHand){ const e = j.onHand(ctx, j); if(e) apply(e, i, null); }
+  });
+  return {type:ev.type, name:def.name + ' Lv.' + lv, emoji:def.emoji, steps:steps, chips:chips, mult:mult, total:Math.floor(chips * mult)};
+}
+
+/* =====================================================================
+   Sound
+   ===================================================================== */
+let ac = null;
+function tone(freq, dur, type, vol){
+  if(muted || TEST) return;
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if(ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type || 'square'; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol || 0.04, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(ac.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  }catch(e){}
+}
+const sfx = {
+  pick(){ tone(440, .05); },
+  step(i){ tone(380 + Math.min(i, 14)*55, .09, 'square', .045); },
+  jok(){ tone(760, .12, 'triangle', .06); },
+  again(){ tone(980, .1, 'triangle', .06); },
+  win(){ [523,659,784,1047].forEach((f,i) => setTimeout(() => tone(f,.18,'triangle',.06), i*110)); },
+  lose(){ [330,262,196].forEach((f,i) => setTimeout(() => tone(f,.25,'sawtooth',.04), i*160)); },
+  buy(){ tone(880,.08,'triangle',.06); setTimeout(() => tone(1175,.1,'triangle',.06), 70); },
+  rare(){ [659,880,1109].forEach((f,i) => setTimeout(() => tone(f,.14,'triangle',.055), i*80)); },
+  legend(){ [523,659,784,1047,1319,1568].forEach((f,i) => setTimeout(() => tone(f,.22,'triangle',.06), i*90)); },
+  bad(){ tone(150,.15,'sawtooth',.05); }
+};
+
+/* =====================================================================
+   Ambient music: generated live with the Web Audio API (no files needed)
+   ===================================================================== */
+const MUSIC_CALM = [ {r:45, n:[57,60,64,67]}, {r:41, n:[57,60,64,65]}, {r:48, n:[55,59,64,67]}, {r:43, n:[55,59,62,64]} ];
+const MUSIC_BOSS = [ {r:45, n:[57,60,64]}, {r:41, n:[57,60,65]}, {r:38, n:[57,62,65]}, {r:40, n:[56,59,64]} ];
+const MUSIC_PENT = [69,72,74,76,79,81,84];
+function createMusic(ctx){
+  const hz = m => 440 * Math.pow(2, (m - 69) / 12);
+  const master = ctx.createGain(); master.gain.value = 0;
+  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -20; comp.ratio.value = 3; comp.attack.value = .02; comp.release.value = .3;
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2800; lp.Q.value = .3;
+  const bus = ctx.createGain(), dry = ctx.createGain(), wet = ctx.createGain(), conv = ctx.createConvolver();
+  dry.gain.value = .7; wet.gain.value = .6;
+  const len = Math.floor(ctx.sampleRate * 3), imp = ctx.createBuffer(2, len, ctx.sampleRate);
+  for(let c = 0; c < 2; c++){ const d = imp.getChannelData(c); for(let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6); }
+  conv.buffer = imp;
+  bus.connect(dry); dry.connect(lp); bus.connect(conv); conv.connect(wet); wet.connect(lp);
+  lp.connect(comp); comp.connect(master); master.connect(ctx.destination);
+
+  function env(g, t, a, peak, hold, r){
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a);
+    g.gain.setValueAtTime(peak, t + a + hold); g.gain.exponentialRampToValueAtTime(0.0001, t + a + hold + r);
+  }
+  function osc(type, f, t, dur, dest, detune){
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = f; if(detune) o.detune.value = detune;
+    o.connect(dest); o.start(t); o.stop(t + dur); return o;
+  }
+  function pad(m, t, dur, vol, dest){
+    const g = ctx.createGain(); g.connect(dest); env(g, t, 2.4, vol, Math.max(0, dur - 2.4), 3.2);
+    osc('triangle', hz(m), t, dur + 3.4, g, -7); osc('triangle', hz(m), t, dur + 3.4, g, 7);
+  }
+  function bell(m, t, vol){
+    const g = ctx.createGain(); g.connect(bus); env(g, t, .01, vol, 0, 3.6);
+    osc('sine', hz(m), t, 3.8, g); const h = ctx.createGain(); h.gain.value = .22; h.connect(g); osc('sine', hz(m) * 2.01, t, 3.8, h);
+  }
+  function pluck(m, t, vol){
+    const g = ctx.createGain(); g.connect(bus); env(g, t, .005, vol, 0, .6); osc('triangle', hz(m), t, .7, g);
+  }
+  function low(m, t, dur, vol){
+    const g = ctx.createGain(); g.connect(bus); env(g, t, 1.2, vol, Math.max(0, dur - 1.2), 2.2); osc('sine', hz(m - 12), t, dur + 2.4, g);
+  }
+
+  let nextT = 0, idx = 0, step = 0;
+  const ARP = [0, 1, 2, 3, 2, 1];
+  function chord(T, mood){
+    const set = mood === 'boss' ? MUSIC_BOSS : MUSIC_CALM, ch = set[idx++ % set.length];
+    const D = mood === 'boss' ? 5.5 : mood === 'play' ? 6.5 : 8;
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = mood === 'boss' ? 750 : 1250; f.connect(bus);
+    ch.n.forEach((m, i) => pad(m, T + i * .12, D, mood === 'boss' ? .05 : .042, f));
+    low(ch.r, T, D, mood === 'boss' ? .13 : .1);
+    if(mood === 'boss') low(ch.r + 7, T + .1, D, .05);
+    if(mood !== 'calm'){
+      const st = mood === 'boss' ? .375 : .5;
+      for(let t = T + .3; t < T + D - .2; t += st){
+        if(Math.random() < .82) pluck(ch.n[ARP[step % ARP.length] % ch.n.length] + 12, t, mood === 'boss' ? .04 : .03);
+        step++;
+      }
+    }
+    if(mood !== 'boss'){
+      const cnt = mood === 'calm' ? 3 : 1;
+      for(let i = 0; i < cnt; i++) bell(MUSIC_PENT[Math.floor(Math.random() * MUSIC_PENT.length)], T + 1 + Math.random() * (D - 2.5), mood === 'calm' ? .04 : .03);
+    }
+    nextT = T + D - .4;
+  }
+  return {
+    resetClock(now){ nextT = now + .15; },
+    schedule(until, mood){ if(!nextT) nextT = ctx.currentTime + .15; let guard = 0; while(nextT < until && guard++ < 20) chord(nextT, mood); },
+    setLevel(v, now){ master.gain.cancelScheduledValues(now); master.gain.setValueAtTime(master.gain.value, now); master.gain.linearRampToValueAtTime(v, now + .8); }
+  };
+}
+const music = {
+  eng:null, timer:null, level:(() => { const v = parseInt(store.get('blockpoker.music') || '2', 10); return v >= 0 && v <= 2 ? v : 2; })(),
+  vol(){ return muted ? 0 : [0, .28, .55][this.level]; },
+  mood(){ return (!G || G.phase === 'shop') ? 'calm' : G.bossFight ? 'boss' : 'play'; },
+  tick(){ if(ac && this.eng) this.eng.schedule(ac.currentTime + 1.8, this.mood()); },
+  start(){
+    if(TEST && !params.has('music')) return;
+    try{
+      ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+      if(ac.state === 'suspended') ac.resume();
+      if(!this.eng) this.eng = createMusic(ac);
+      this.sync();
+    }catch(e){}
+  },
+  sync(){
+    if(!this.eng || !ac) return;
+    const v = this.vol(); this.eng.setLevel(v, ac.currentTime);
+    if(v > 0 && !this.timer){ this.eng.resetClock(ac.currentTime); this.tick(); this.timer = setInterval(() => this.tick(), 400); }
+    else if(v === 0 && this.timer){ clearInterval(this.timer); this.timer = null; }
+  },
+  cycle(){
+    this.level = (this.level + 2) % 3; store.set('blockpoker.music', String(this.level));
+    if(this.level > 0) this.start(); else this.sync();
+    renderMusicBtn(); toast('Music: ' + ['off', 'quiet', 'normal'][this.level], 1200);
+  }
+};
+function renderMusicBtn(){
+  const t = 'Music: ' + ['off', 'quiet', 'normal'][music.level] + ' (click to change)';
+  ['#bMusic', '#bMusicT'].forEach(id => { const b = $(id); if(!b) return; b.title = t; b.setAttribute('aria-label', t); b.classList.toggle('off', music.level === 0); });
+}
+
+/* =====================================================================
+   Rendering
+   ===================================================================== */
+function showScreen(name){
+  $('#title').hidden = name !== 'title';
+  $('#game').hidden = name !== 'game';
+}
+
+function cardHtml(c, o){
+  o = o || {};
+  const tag = o.tag || 'button';
+  const m = MATS[c.mat];
+  const deb = G && G.boss && G.boss.debuff === c.mat;
+  const extra = tag === 'button' ? ' type="button" aria-pressed="' + (!!o.sel) + '"' : '';
+  return '<' + tag + ' class="card m-' + c.mat + (o.sel ? ' sel' : '') + (deb ? ' deb' : '') + (G && G.tut && G.tut.step === 1 && G.tut.ids.indexOf(c.id) !== -1 ? ' tuthi' : '') + '" data-id="' + c.id + '"' + extra +
+    ' aria-label="' + m.name + ', ' + c.chips + ' chips' + (deb ? ', weakened' : '') + '">' +
+    '<span class="cv">' + c.chips + '</span><span class="ic">' + icon(c.mat) + '</span><span class="cn">' + m.name + '</span>' +
+    (deb ? '<span class="x" aria-hidden="true">✕</span>' : '') + '</' + tag + '>';
+}
+
+function render(){
+  if(!G) return;
+  document.documentElement.style.setProperty('--hn', String(Math.max(HAND_SIZE, handSize())));
+  updatePreview();
+  renderHud(); renderSide(); renderBoss(); renderJokers(); renderCoach();
+  const shop = G.phase === 'shop';
+  $('#roundview').hidden = shop;
+  $('#shopview').hidden = !shop;
+  if(shop) renderShop(); else renderRound();
+}
+
+function renderHud(){
+  $('#hRound').textContent = (G.bossFight ? '⚔ Boss challenge' : 'Round ' + (G.roundIdx + 1) + '/' + ROUNDS.length) + (G.diff !== 'normal' ? ' · ' + DIFFS[G.diff].name : '');
+  paintClock();
+  $('#hMoney').innerHTML = icon('smaragd') + '<span>' + G.money + '</span>';
+  $('#hMoney').setAttribute('aria-label', G.money + ' emeralds');
+  $('#bSound').textContent = muted ? '🔇' : '🔊'; $('#bSound').title = muted ? 'Sound off' : 'Sound on'; renderMusicBtn();
+}
+
+function renderSide(){
+  const r = curRound();
+  const shop = G.phase === 'shop';
+  const pct = Math.min(100, Math.round(G.shownScore / r.target * 100));
+  const cap = 5 + bonus('interestCap');
+  const rinfo = 'Target: ' + num(r.target) + ' points. Reward: ' + r.reward + ' emeralds, +1 for every hand left, and 1 interest per 5 emeralds you hold (max ' + cap + ').';
+  let h = '<div class="box">' + infoBtn(rinfo, 'corner') +
+    '<div class="rname">' + r.name + '</div>' +
+    '<div class="scorebig"><span id="scoreNum">' + num(Math.floor(G.shownScore)) + '</span> <small>/ ' + num(r.target) + '</small></div>' +
+    '<div class="bar"><i id="bar" style="width:' + pct + '%"></i></div></div>';
+  h += '<div class="box calc"><div class="cname" id="cName"></div>' +
+    '<div class="crow"><span class="cc" id="cChips"></span><span class="x">×</span><span class="cm" id="cMult"></span></div>' +
+    '<div class="crow clab" aria-hidden="true"><span>Chips</span><span class="x">×</span><span>Mult</span></div>' +
+    '<div class="ctotal" id="cTotal"></div></div>';
+  // in the Market the counters preview the next round (they update when you buy a joker)
+  const cH = shop ? Math.max(1, baseHands() + bonus('hands')) : G.handsLeft;
+  const cD = shop ? Math.max(0, baseDiscards() + bonus('discards')) : G.discardsLeft;
+  const cK = shop ? Math.max(0, makeDeck().length - handSize()) : G.draw.length;
+  h += '<div class="box"><div class="counters">' +
+    '<div class="cnt h"><b id="nHands">' + cH + '</b><span>Hands</span></div>' +
+    '<div class="cnt d"><b id="nDisc">' + cD + '</b><span>Discards</span></div>' +
+    '<div class="cnt k"><b>' + cK + '</b><span>Deck</span></div></div></div>';
+  $('#side').innerHTML = h;
+  paintCalc();
+}
+
+function paintCalc(){
+  const n = $('#cName'); if(!n) return;
+  const c = G.calc;
+  n.textContent = (c.emoji ? c.emoji + ' ' : '') + c.name;
+  $('#cChips').textContent = fmt(c.chips);
+  $('#cMult').textContent = fmt(c.mult);
+  $('#cTotal').textContent = c.total != null ? '= ' + num(c.total) : '';
+}
+
+function renderBoss(){
+  const b = $('#bossbar');
+  if(G.boss && G.phase !== 'shop'){
+    b.hidden = false;
+    b.innerHTML = '<b>' + curRound().name + '</b><br><span style="font-weight:400">' + G.boss.text + '</span>';
+  } else { b.hidden = true; b.innerHTML = ''; }
+}
+
+function renderJokers(){
+  let h = '';
+  for(let i = 0; i < maxJokers(); i++){
+    const j = G.jokers[i];
+    if(j) h += '<button type="button" class="jslot r-' + rarityOf(j) + (G.selJoker === i ? ' sel' : '') + (G.popJ === i ? ' pop' : '') + '" data-j="' + i + '" title="' + j.name + '" aria-label="' + j.name + ': ' + j.desc + '">' +
+      '<span class="je">' + j.emoji + '</span><span class="jn">' + j.name + '</span></button>';
+    else h += '<div class="jslot empty" aria-hidden="true">+</div>';
+  }
+  h += '<div class="jcount">' + G.jokers.length + '/' + maxJokers() + infoBtn('Click a joker for details or to sell it. Drag it (or use the arrows) to change the order: jokers score from left to right.') + '</div>';
+  $('#jokerbar').innerHTML = h;
+  const info = $('#jinfo');
+  const j = G.selJoker != null ? G.jokers[G.selJoker] : null;
+  if(j){
+    const si = G.selJoker;
+    info.hidden = false;
+    info.innerHTML = '<span><b>' + j.emoji + ' ' + j.name + '</b> <span class="muted">(' + RARITY_NAME[rarityOf(j)] + ')</span>: ' + j.desc + (j.dyn ? ' <span class="muted">(' + j.dyn(j) + ')</span>' : '') + '</span>' +
+      '<span class="jacts">' +
+      '<button type="button" class="btn small" data-move="-1" aria-label="Move joker left"' + (si === 0 ? ' disabled' : '') + '>◀</button>' +
+      '<button type="button" class="btn small" data-move="1" aria-label="Move joker right"' + (si === G.jokers.length - 1 ? ' disabled' : '') + '>▶</button>' +
+      '<button type="button" class="btn small warn" data-sell="' + si + '">Sell (+' + sellValue(j) + ')</button>' +
+      '<button type="button" class="btn small" data-closeinfo="1" aria-label="Close details">✕</button></span>';
+  } else { info.hidden = true; info.innerHTML = ''; }
+}
+
+function renderRound(){
+  updatePreview();
+  const sel = G.phase === 'play' ? selectedCards() : [];
+  let b = '';
+  for(let i = 0; i < MAX_SEL; i++){
+    if(G.playing[i]) b += '<div class="slot">' + cardHtml(G.playing[i], {tag:'div'}) + '</div>';
+    else if(sel[i]) b += '<div class="slot"><span class="ghost">' + icon(sel[i].mat) + '</span></div>';
+    else b += '<div class="slot"></div>';
+  }
+  b += '<div class="arrow" aria-hidden="true">▶</div>';
+  if(G.calc.type) b += '<div class="slot result"><span class="re">' + G.calc.emoji + '</span><span class="rn">' + HANDS[G.calc.type].name + '</span></div>';
+  else b += '<div class="slot result"><span class="re" style="opacity:.3">?</span></div>';
+  $('#bench').innerHTML = b;
+  $('#hand').innerHTML = G.hand.map(c => cardHtml(c, {sel: G.selected.has(c.id)})).join('');
+  const kb = $('#bKeys'), kt = 'Keys: ' + (handSize() > 9 ? '1-9, 0 and -' : '1-' + handSize()) + ' select a card, Enter crafts, D discards.'; kb.dataset.info = kt; kb.title = kt;
+  const playing = G.phase === 'play';
+  $('#bPlay').disabled = !playing || !G.selected.size || G.handsLeft < 1;
+  $('#bDiscard').disabled = !playing || !G.selected.size || G.discardsLeft < 1;
+  $('#bSortVal').disabled = !playing || G.sort === 'val';
+  $('#bSortMat').disabled = !playing || G.sort === 'mat';
+}
+
+const RIB_TEXT = {common:'COMMON', uncommon:'UNCOMMON', rare:'✦ RARE', legendary:'★ LEGENDARY'};
+function renderShop(){
+  const next = ROUNDS[G.roundIdx + 1];
+  let hj = '', hb = '';
+  G.shopOffers.forEach((o, i) => {
+    if(o.kind === 'joker'){
+      if(o.sold){ hj += '<div class="offer sold">Sold</div>'; return; }
+      const j = JOKER_BY_ID[o.id];
+      const rar = rarityOf(j);
+      hj += '<div class="offer r-' + rar + '">' + '<span class="rib">' + RIB_TEXT[rar] + '</span>' + '<div class="oe">' + j.emoji + '</div><b>' + j.name + '</b><div class="ot">' + TAG_NAME[j.tag] + '</div><div class="od">' + j.desc + '</div>' +
+        '<button type="button" class="btn gold' + (G.money < price(j.cost) ? ' poor' : '') + '" data-buy="' + i + '">Buy · ' + price(j.cost) + '</button></div>';
+    } else {
+      if(o.sold){ hb += '<div class="book sold">Sold</div>'; return; }
+      const d = PACKS[o.type], pc = packPrice(o);
+      hb += '<div class="book r-' + (o.type === 'grand' ? 'grand' : 'book') + '" title="' + d.note + (o.options.length !== d.n ? ' (+' + (o.options.length - d.n) + ' extra)' : '') + '"><div class="be">' + d.emoji + '</div>' +
+        '<div class="bt"><b>' + d.name + '</b><span class="ot">Pick 1 of ' + o.options.length + '</span>' +
+        '<span class="bd">' + (o.type === 'sword' ? 'Sword books only' : 'Recipe books') + ' · +' + o.levels + ' level</span></div>' +
+        '<button type="button" class="btn gold small' + (G.money < pc ? ' poor' : '') + '" data-buy="' + i + '">View · ' + pc + '</button></div>';
+    }
+  });
+  const bs = bossFor(G.roundIdx), bst = bs ? G.bossDone[bs.id] : null;
+  const bossBtn = !bs ? '' : bst ? '<span class="muted">' + bs.emoji + ' ' + bs.title + (bst === 'won' ? ' defeated' : ' failed') + '</span>' :
+    '<button type="button" class="btn warn" id="bBoss" title="Optional boss challenge with a big prize">⚔ ' + bs.title + '</button>';
+  const rp = rerollPrice();
+  const rtxt = 'Reroll the jokers and bundles (' + (rp === 0 ? 'free' : 'costs ' + rp + ' emeralds') + ')';
+  const rr = '<button type="button" class="btn reroll" id="bReroll" title="' + rtxt + '" aria-label="' + rtxt + '">' +
+    '<svg class="rr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20.5 3v6h-6"/></svg>' +
+    '<span class="rc">' + icon('smaragd') + (rp === 0 ? 'Free' : rp) + '</span></button>';
+  const h = '<div class="shop box"><h2>Market ' + infoBtn('Spend emeralds on jokers and recipe books. Every 5 emeralds you keep earn 1 interest at the end of a round.') + '</h2>' +
+    '<div class="offers">' + hj + '</div><div class="books">' + hb + '</div>' +
+    '<div class="shopbtns"><button type="button" class="btn go" id="bNext">Round ' + (G.roundIdx + 2) + ' ▶</button>' + rr + bossBtn +
+    '<span class="muted nextinfo">Next target: ' + num(next.target) + ' points' + (next.boss ? ' · ' + next.name : '') + '</span></div></div>';
+  $('#shopview').innerHTML = h;
+}
+
+/* ---------- Dialogs ---------- */
+function openModal(html, dismiss, wide){
+  const m = $('#modal');
+  m.innerHTML = '<div class="mpanel' + (wide ? ' wide' : '') + '" role="dialog" aria-modal="true">' + html + '</div>';
+  m.dataset.dismiss = dismiss ? '1' : '0';
+  m.hidden = false;
+  const f = m.querySelector('button'); if(f) f.focus();
+}
+function closeModal(){ const m = $('#modal'); m.hidden = true; m.innerHTML = ''; }
+function modalOpen(){ return !$('#modal').hidden; }
+
+let toastT = null;
+function toast(msg, ms){
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), ms || 1800);
+}
+
+function helpHtml(){
+  return '<h2>How to play</h2><ul>' +
+    '<li>New here? The <b>Tutorial</b> button on the title screen walks you through a first round.</li>' +
+    '<li>Click up to <b>5 cards</b> and press <b>Craft</b>. The cards form a recipe.</li>' +
+    '<li>Score = <b>Chips × Mult</b>. Only the cards that belong to the recipe score.</li>' +
+    '<li>See all recipes under <b>Recipes</b>. Example: 2 Diamond + 1 Stick = Diamond Sword.</li>' +
+    '<li><b>Discard</b> swaps cards and does not cost a hand.</li>' +
+    '<li>Reach the target before you run out of hands. Clear all 8 rounds to win.</li>' +
+    '<li>In the <b>Market</b> you buy Jokers (up to 5) and recipe books. Every 5 emeralds you hold earn 1 interest.</li>' +
+    '<li>After rounds 2, 4 and 6 the Market offers an <b>optional Boss challenge</b>: an extra round with a special rule and a big prize. If you fail you only lose half your emeralds.</li>' +
+    '<li>The longer the Market shows no <b>Rare</b> or <b>Legendary</b> joker, the more likely one appears. Later rounds also favour them.</li>' +
+    '<li><b>Recipe books</b> raise a recipe by a level. You find them in the Market inside <b>bundles</b>: open one and pick 1 of 3 or 5 books (a Recipe Pack is always there, a Grand Pack and a Sword Pack show up sometimes). Boss prizes and a few jokers give levels too.</li>' +
+    '<li>The 🎵 button changes the ambient music volume (normal, quiet, off). 🔊 mutes all sound.</li>' +
+    '<li>Tap the little <b>i</b> icons for extra info (rewards, keyboard shortcuts, joker tips).</li>' +
+    '<li>Jokers score <b>from left to right</b>. Drag them with the mouse or finger (or use ◀ ▶) to change the order. A ×Mult joker is strongest at the far right.</li>' +
+    '<li><b>Retrigger</b> jokers make a scoring card count again, and every card joker fires again with it.</li>' +
+    '<li>The <b>Collection</b> lists every joker in the game.</li>' +
+    '<li>Click anywhere during scoring to speed it up.</li></ul>' +
+    '<div class="mbtns"><button type="button" class="btn go" data-act="close">Got it</button></div>';
+}
+function recipesHtml(){
+  const cur = k => { const x = handStats(k, G ? G.handLevels[k] : 1); return x.chips * x.mult; };
+  let rows = HAND_ORDER.slice().sort((a,b) => cur(a) - cur(b) || HAND_ORDER.indexOf(a) - HAND_ORDER.indexOf(b)).map(k => {
+    const d = HANDS[k], lv = G ? G.handLevels[k] : 1, s = handStats(k, lv);
+    return '<tr><td>' + d.emoji + ' <b>' + d.name + '</b><br><span class="muted">' + d.info + '</span></td><td class="n">Lv.' + lv + '</td><td class="n">' + s.chips + ' × ' + s.mult + '</td></tr>';
+  }).join('');
+  return '<button type="button" class="btn mclose" data-act="close" title="Close" aria-label="Close">✕</button>' + '<h2>Recipes</h2><p class="muted" style="margin:0 0 8px">The best matching recipe is scored automatically.</p>' +
+    '<table class="rec"><tbody>' + rows + '</tbody></table>' +
+    '<p class="muted">Card chips: Wood 2 · Stick 3 · Stone 5 · Iron 8 · Gold 11 · Diamond 15</p>';
+}
+let colRev = false, colTag = 'all';
+const RARITY_RANK = {common:0, uncommon:1, rare:2, legendary:3};
+function collectionHtml(tag){
+  colTag = tag;
+  const list = JOKERS.filter(j => tag === 'all' || j.tag === tag)
+    .map((j, i) => ({j, i})).sort((a, b) => (RARITY_RANK[rarityOf(a.j)] - RARITY_RANK[rarityOf(b.j)]) * (colRev ? -1 : 1) || a.j.cost - b.j.cost || a.i - b.i).map(x => x.j);
+  let foundCount = 0; JOKERS.forEach(j => { if(found.has(j.id)) foundCount++; });
+  const bar = TAGS.map(t => '<button type="button" class="btn small' + (t[0] === tag ? ' on' : '') + '" data-col="' + t[0] + '">' + t[1] + '</button>').join('');
+  const tiles = list.map(j => {
+    const r = rarityOf(j), f = found.has(j.id);
+    return '<div class="jtile r-' + r + (f ? ' found' : '') + '">' +
+      '<div class="jt-top"><span class="jt-e">' + j.emoji + '</span><span class="jt-badge">' + RARITY_NAME[r] + '</span></div>' +
+      '<b>' + j.name + '</b><div class="jt-m">' + TAG_NAME[j.tag] + ' · Cost ' + j.cost + '</div>' +
+      '<div class="jt-d">' + j.desc + '</div>' +
+      '<div class="jt-m">' + (f ? '<b>Found</b>' : 'Not found yet') + '</div></div>';
+  }).join('');
+  return '<div id="colwrap">' + '<button type="button" class="btn mclose" data-act="close" title="Close" aria-label="Close">✕</button>' + '<h2>Joker Collection</h2>' +
+    '<p class="muted" style="margin:0">Found ' + foundCount + ' of ' + JOKERS.length + ' jokers (seen in a Market or owned). Showing ' + list.length + '.</p>' +
+    '<div class="colbar">' + bar + '<button type="button" class="btn small" data-colrev="1" title="Reverse the rarity order">⇅ ' + (colRev ? 'Legendary → Common' : 'Common → Legendary') + '</button></div><div class="colgrid">' + tiles + '</div></div>';
+}
+
+/* =====================================================================
+   Actions
+   ===================================================================== */
+function toggleCard(id){
+  if(!G || G.phase !== 'play') return;
+  if(G.selected.has(id)) G.selected.delete(id);
+  else {
+    if(G.selected.size >= MAX_SEL){ toast('You can select up to 5 cards.'); sfx.bad(); return; }
+    G.selected.add(id);
+  }
+  sfx.pick();
+  if(G.tut) tutCheck();
+  render();
+}
+
+function discardSelected(){
+  if(G && G.tut && G.tut.step < 4){ toast('Discarding comes later. Follow the tip first.'); return; }
+  if(!G || G.phase !== 'play') return;
+  if(!G.selected.size) return;
+  if(G.discardsLeft < 1){ toast('No discards left.'); return; }
+  const tossed = G.hand.filter(c => G.selected.has(c.id));
+  G.hand = G.hand.filter(c => !G.selected.has(c.id));
+  G.selected = new Set();
+  G.discardsLeft--;
+  G.jokers.forEach(j => { if(j.onDiscard) j.onDiscard(j, tossed); });
+  drawUp();
+  tone(300, .08, 'square', .04);
+  render();
+}
+
+const wait = ms => new Promise(r => setTimeout(r, TEST ? 0 : (G && G.fast ? ms / 8 : ms)));
+
+function floatText(el, text, cls){
+  if(!el) return;
+  const f = document.createElement('span');
+  f.className = 'float ' + cls; f.textContent = text;
+  el.appendChild(f);
+  setTimeout(() => f.remove(), 950);
+}
+function popEl(el){ if(!el) return; el.classList.remove('score'); void el.offsetWidth; el.classList.add('score'); }
+function bumpEl(el){ if(!el) return; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+
+function updateScoreUi(v){
+  const n = $('#scoreNum'), bar = $('#bar'); if(!n) return;
+  const t = curRound().target;
+  n.textContent = num(Math.floor(v));
+  bar.style.width = Math.min(100, v / t * 100) + '%';
+}
+
+async function playSelected(){
+  if(!G || G.phase !== 'play') return;
+  const run = G;
+  const sel = selectedCards();
+  if(sel.length < 1 || sel.length > MAX_SEL || G.handsLeft < 1) return;
+  if(G.tut && G.tut.step < 4){
+    if(!tutExact()){ toast('Follow the tip first: 2 Diamonds + 1 Stick.'); sfx.bad(); return; }
+    G.tut.step = 99;
+  }
+  G.phase = 'anim'; G.fast = false;
+  G.handsLeft--;
+  G.playing = sel.slice();
+  G.hand = G.hand.filter(c => !G.selected.has(c.id));
+  G.selected = new Set();
+  const res = scoreHand(sel);
+  G.crafted[res.type] = (G.crafted[res.type] || 0) + 1;
+  G.calc = {name:res.name, emoji:res.emoji, type:res.type, chips:res.steps[0].chips, mult:res.steps[0].mult, total:null};
+  render();
+  const pace = Math.max(0.45, Math.min(1, 16 / res.steps.length));
+  await wait(350); if(G !== run) return;
+  for(let i = 1; i < res.steps.length; i++){
+    const s = res.steps[i];
+    G.calc.chips = s.chips; G.calc.mult = s.mult; paintCalc();
+    if(s.kind === 'card'){
+      const el = $('#bench [data-id="' + s.cardId + '"]');
+      popEl(el);
+      if(s.debuffed) floatText(el, 'Weak', 'd');
+      else { floatText(el, '+' + s.dChips, 'c'); bumpEl($('#cChips')); sfx.step(i); }
+    } else if(s.kind === 'retrigger'){
+      popEl($('#jokerbar [data-j="' + s.jokerIdx + '"]'));
+      floatText($('#jokerbar [data-j="' + s.jokerIdx + '"]'), 'Again!', 'x');
+      popEl($('#bench [data-id="' + s.cardId + '"]'));
+      sfx.again();
+    } else {
+      const el = $('#jokerbar [data-j="' + s.jokerIdx + '"]');
+      popEl(el);
+      if(s.dMoney) G.money += s.dMoney;
+      if(s.levelUp) G.handLevels[res.type]++;
+      if(s.note && !s.dChips && !s.dMult && s.xMult === 1) floatText(el, s.note, s.note === 'Miss' ? 'd' : 'x');
+      else if(s.dChips){ floatText(el, '+' + s.dChips + ' Chips', 'c'); bumpEl($('#cChips')); }
+      else if(s.dMult){ floatText(el, '+' + fmt(s.dMult) + ' Mult', 'm'); bumpEl($('#cMult')); }
+      else if(s.xMult !== 1){ floatText(el, '×' + fmt(s.xMult), 'x'); bumpEl($('#cMult')); }
+      sfx.jok();
+    }
+    await wait((s.kind === 'card' ? 380 : 480) * pace); if(G !== run) return;
+  }
+  G.calc.total = res.total; paintCalc();
+  await wait(450); if(G !== run) return;
+  const from = G.score; G.score += res.total;
+  const pm = bonus('playMoney'); if(pm) G.money += pm;
+  G.jokers.forEach(j => { if(j.onPlayed){ const m = j.onPlayed(res.type, G.score >= curRound().target); if(m) toast(m); } });
+  for(let k = 1; k <= 12; k++){
+    G.shownScore = from + (G.score - from) * k / 12;
+    updateScoreUi(G.shownScore);
+    await wait(35); if(G !== run) return;
+  }
+  G.shownScore = G.score; updateScoreUi(G.score);
+  await wait(450); if(G !== run) return;
+  G.playing = [];
+  drawUp();
+  G.calc = idleCalc();
+  afterPlay();
+}
+
+function afterPlay(){
+  if(G.score >= curRound().target){ roundWon(); return; }
+  if(G.handsLeft < 1 || !G.hand.length){ gameOver(); return; }
+  G.phase = 'play';
+  render();
+}
+
+function roundWon(){
+  G.phase = 'clear';
+  if(G.bossFight){ bossWon(); return; }
+  const r = ROUNDS[G.roundIdx];
+  const prev = parseInt(store.get(bestKey(G.diff)) || '0', 10) || 0;
+  if(G.roundIdx + 1 > prev) store.set(bestKey(G.diff), String(G.roundIdx + 1));
+  const notes = [];
+  let tutHtml = '';
+  if(G.tut){
+    G.tut.step = 99;
+    tutHtml = '<div class="note"><b>Scoring:</b> (60 recipe chips + 15 + 15 + 3 card chips) × 6 Mult = <b>' + num(G.score) + '</b>. Only the cards in the recipe score, and jokers add even more.</div>';
+    if(G.tut.gift && G.jokers.length < maxJokers()){
+      const g = makeJoker(JOKER_BY_ID.stone); G.jokers.push(g); markFound(g.id);
+      tutHtml += '<div class="note">🔮 <b>Gift: ' + g.name + '</b>, a Legendary joker! ×3 Mult on every hand and +1 hand each round. Jokers sit in the bar above your cards.</div>';
+    }
+  }
+  G.jokers.forEach(j => { if(j.onRoundWin){ const m = j.onRoundWin(j); if(typeof m === 'string') notes.push(m); } });
+  if(G.roundIdx === ROUNDS.length - 1){ victory(); return; }
+  const lines = [['Round cleared', r.reward]];
+  if(G.handsLeft > 0) lines.push(['Hands left (' + G.handsLeft + ' × 1)', G.handsLeft]);
+  const cap = 5 + bonus('interestCap');
+  const interest = Math.min(cap, Math.floor(G.money / 5));
+  if(interest > 0) lines.push(['Interest', interest]);
+  G.jokers.forEach(j => {
+    const v = j.endMoneyFn ? j.endMoneyFn(G) : (j.endMoney || 0);
+    if(v > 0) lines.push([j.name, v]);
+  });
+  const total = lines.reduce((s, l) => s + l[1], 0);
+  G.money += total;
+  sfx.win();
+  render();
+  openModal('<h2>Round cleared!</h2><p>' + num(G.score) + ' of ' + num(r.target) + ' points.</p>' + tutHtml + '<ul class="lines">' +
+    lines.map(l => '<li><span>' + l[0] + '</span><span>+' + l[1] + '</span></li>').join('') +
+    '<li class="sum"><span>Emeralds total</span><span>+' + total + '</span></li></ul>' +
+    notes.map(n => '<p class="note">📖 ' + n + '</p>').join('') +
+    '<div class="mbtns"><button type="button" class="btn go" data-act="shop">Go to Market</button></div>', false);
+}
+
+function victory(){
+  G.clock = false;
+  const bt = parseInt(store.get(timeKey(G.diff)) || '0', 10) || 0, nb = !bt || G.ms < bt;
+  if(nb) store.set(timeKey(G.diff), String(Math.round(G.ms)));
+  sfx.win();
+  render();
+  openModal('<h2>Victory!</h2><p>You cleared all 8 rounds on ' + DIFFS[G.diff].name + ' and opened the Void Gate.</p><p><b>Time: ' + fmtTime(G.ms) + '</b>' + (nb ? ' · new best time!' : ' · best ' + fmtTime(bt)) + '</p>' +
+    '<p class="muted">Your jokers: ' + (G.jokers.length ? G.jokers.map(j => j.emoji + ' ' + j.name).join(', ') : 'none') + '</p>' +
+    '<div class="mbtns"><button type="button" class="btn go" data-act="newrun">New game</button></div>', false);
+}
+
+function gameOver(){
+  if(G.bossFight){ bossLost(); return; }
+  G.phase = 'over'; G.clock = false;
+  sfx.lose();
+  render();
+  const r = ROUNDS[G.roundIdx];
+  openModal('<h2>The Night Wins</h2><p>Round ' + (G.roundIdx + 1) + ' (' + r.name + '): ' + num(G.score) + ' of ' + num(r.target) + ' points.</p>' +
+    '<p class="muted">You were ' + num(r.target - G.score) + ' points short. More jokers and higher recipe levels will help.</p>' +
+    '<div class="mbtns"><button type="button" class="btn go" data-act="newrun">Try again</button></div>', false);
+}
+
+/* ---------- Optional boss challenges ---------- */
+function bossFor(roundIdx){ return BOSSES.find(b => b.after === roundIdx) || null; }
+function bossHands(b){ return Math.max(1, baseHands() + bonus('hands') - ((b.boss && b.boss.handsMinus) || 0)); }
+function bossConfirmHtml(b){
+  const loss = Math.floor(G.money / 2);
+  return '<h2>' + b.emoji + ' Boss challenge: ' + b.title + '</h2>' +
+    '<p>An optional extra round before round ' + (G.roundIdx + 2) + '. You can skip it.</p>' +
+    '<ul><li><b>Rule:</b> ' + b.boss.text + '</li>' +
+    '<li><b>Target:</b> ' + num(b.target) + ' points in ' + bossHands(b) + ' hands.</li>' +
+    '<li><b>Prize:</b> ' + b.prize + '</li>' +
+    '<li><b>Risk:</b> if you fail you lose half your emeralds (' + loss + ' of ' + G.money + '). No game over, and you cannot retry.</li></ul>' +
+    '<div class="mbtns"><button type="button" class="btn warn" data-act="fight" data-boss="' + b.id + '">Fight!</button><button type="button" class="btn" data-act="close">Not now</button></div>';
+}
+function applyPrize(b){
+  const out = [];
+  if(b.id === 'bone'){
+    G.money += 10; const k = mostCrafted(); G.handLevels[k] += 2;
+    out.push('+10 emeralds'); out.push(BOOKS[k] + ': ' + HANDS[k].name + ' is now level ' + G.handLevels[k]);
+  } else if(b.id === 'golem'){
+    const pool = shuffle(JOKERS.filter(j => j.cost >= 7 && !G.jokers.some(o => o.id === j.id)));
+    if(G.jokers.length < maxJokers() && pool.length){
+      G.pendingPick = pool.slice(0, 3).map(j => j.id); G.pendingPick.forEach(markFound);
+      out.push('Pick your free Legendary joker:');
+    } else { G.money += 15; out.push('+15 emeralds (no free joker slot)'); }
+  } else {
+    HAND_ORDER.forEach(k => { G.handLevels[k]++; });
+    G.money += 20; out.push('+1 level on every recipe'); out.push('+20 emeralds');
+  }
+  return out;
+}
+function bossWon(){
+  const b = G.bossFight; G.bossDone[b.id] = 'won';
+  const lines = applyPrize(b);
+  sfx.win(); render();
+  openModal('<h2>Boss defeated!</h2><p>' + b.title + ': ' + num(G.score) + ' of ' + num(b.target) + ' points.</p>' +
+    '<ul class="lines">' + lines.map(l => '<li><span>' + l + '</span></li>').join('') + '</ul>' +
+    (G.pendingPick ? '<div class="picks">' + G.pendingPick.map(id => { const j = JOKER_BY_ID[id];
+        return '<button type="button" class="offer pick r-legendary" data-pick="' + id + '"><span class="rib">★ LEGENDARY</span><div class="oe">' + j.emoji + '</div><b>' + j.name + '</b><div class="od">' + j.desc + '</div></button>'; }).join('') + '</div>'
+      : '<div class="mbtns"><button type="button" class="btn go" data-act="backshop">Back to Market</button></div>'), false, !!G.pendingPick);
+  if(G.pendingPick) sfx.legend();
+}
+function bossLost(){
+  const b = G.bossFight; G.bossDone[b.id] = 'lost';
+  const loss = Math.floor(G.money / 2); G.money -= loss;
+  G.phase = 'clear'; sfx.lose(); render();
+  openModal('<h2>Challenge failed</h2><p>' + b.title + ' wins: ' + num(G.score) + ' of ' + num(b.target) + ' points.</p>' +
+    '<p class="muted">You lose ' + loss + ' emeralds. Your run goes on.</p>' +
+    '<div class="mbtns"><button type="button" class="btn go" data-act="backshop">Back to Market</button></div>', false);
+}
+function resumeShop(){
+  G.bossFight = null; G.boss = null; G.phase = 'shop';
+  G.score = 0; G.shownScore = 0; G.playing = []; G.hand = []; G.selected = new Set(); G.calc = idleCalc();
+  closeModal(); render();
+}
+
+/* ---------- Market ---------- */
+const RARITY_WEIGHT = {common:10, uncommon:9, rare:5, legendary:1.6};
+function isHigh(j){ const r = rarityOf(j); return r === 'rare' || r === 'legendary'; }
+function genOffers(){
+  const owned = new Set(G.jokers.map(j => j.id));
+  const bag = JOKERS.filter(j => !owned.has(j.id));
+  const n = 3 + bonus('shopSlots');
+  const boost = (1 + 0.12 * G.roundIdx) * (1 + 0.6 * (G.pity || 0));   // later rounds and bad luck streaks favour Rare / Legendary
+  const w = j => RARITY_WEIGHT[rarityOf(j)] * (isHigh(j) ? boost : 1);
+  const picked = [];
+  while(picked.length < n && bag.length){
+    let x = rng() * bag.reduce((t, j) => t + w(j), 0), k = 0;
+    for(; k < bag.length - 1; k++){ x -= w(bag[k]); if(x <= 0) break; }
+    picked.push(bag.splice(k, 1)[0]);
+  }
+  if(!picked.some(isHigh) && (G.pity || 0) >= 2){
+    const hi = bag.filter(isHigh);
+    if(hi.length) picked[picked.length - 1] = hi[Math.floor(rng() * hi.length)];
+  }
+  G.pity = picked.some(isHigh) ? 0 : (G.pity || 0) + 1;
+  const offers = picked.map(j => ({kind:'joker', id:j.id, sold:false}));
+  offers.forEach(o => markFound(o.id));
+  ['small', 'grand', 'sword'].forEach(t => {
+    const d = PACKS[t];
+    if(t !== 'small' && rng() >= d.chance) return;
+    const n = Math.min((d.pool || HAND_ORDER).length, d.n + bonus('packOptions'));
+    offers.push({kind:'pack', type:t, cost:d.cost, levels:1, options:shuffle((d.pool || HAND_ORDER).slice()).slice(0, n), sold:false});
+  });
+  return offers;
+}
+function announceOffers(){
+  const r = G.shopOffers.filter(o => o.kind === 'joker' && !o.sold).map(o => rarityOf(JOKER_BY_ID[o.id]));
+  if(r.includes('legendary')){ sfx.legend(); }
+  else if(r.includes('rare')) sfx.rare();
+}
+function flash(){ document.body.classList.add('flash'); setTimeout(() => document.body.classList.remove('flash'), 800); }
+function enterShop(){
+  closeModal();
+  G.phase = 'shop'; G.selJoker = null; G.calc = idleCalc();
+  if(G.tut) G.tut.step = 4;
+  G.shopOffers = genOffers(); G.rerollCost = Math.max(1, 2 - bonus('rerollDiscount')); G.rerollsThisShop = 0;
+  render(); announceOffers();
+}
+function buy(i){
+  if(!G || G.phase !== 'shop') return;
+  const o = G.shopOffers[i]; if(!o || o.sold) return;
+  if(o.kind === 'joker'){
+    const j = JOKER_BY_ID[o.id];
+    const pc = price(j.cost);
+    if(G.money < pc){ toast('Not enough emeralds.'); sfx.bad(); return; }
+    if(G.jokers.length >= maxJokers()){ toast('All ' + maxJokers() + ' joker slots are full. Sell a joker first.'); sfx.bad(); return; }
+    G.money -= pc; G.jokers.push(makeJoker(j)); o.sold = true; markFound(j.id);
+    const rr = rarityOf(j);
+    if(rr === 'legendary'){ sfx.legend(); toast('★ Legendary joker acquired: ' + j.name + '!', 2600); render(); return; }
+    if(rr === 'rare'){ G.popJ = G.jokers.length - 1; sfx.rare(); toast('Rare joker acquired: ' + j.name + '!', 2200); render(); G.popJ = null; return; }
+  } else {
+    const pc = packPrice(o);
+    if(G.money < pc){ toast('Not enough emeralds.'); sfx.bad(); return; }
+    G.pendingPack = i; sfx.pick(); openModal(packHtml(o), true, o.options.length > 3);
+    return;
+  }
+  sfx.buy(); render();
+}
+function packHtml(o){
+  const d = PACKS[o.type], pc = packPrice(o);
+  return '<h2>' + d.emoji + ' ' + d.name + ' ' + infoBtn('Pick 1 book. It costs ' + pc + ' emeralds and you only pay when you choose. Each book raises its recipe by ' + o.levels + ' level.') + '</h2>' +
+    '<div class="picks">' + o.options.map(h => {
+      const hd = HANDS[h], lv = G.handLevels[h], a = handStats(h, lv), n = handStats(h, lv + o.levels);
+      return '<button type="button" class="offer pick r-book" data-packpick="' + h + '"><div class="oe">📖</div><b>' + BOOKS[h] + '</b><div class="ot">' + hd.name + '</div>' +
+        '<div class="od">Lv.' + lv + ' → ' + (lv + o.levels) + '<br>' + a.chips + '×' + a.mult + ' → ' + n.chips + '×' + n.mult + '</div></button>';
+    }).join('') + '</div><div class="mbtns"><button type="button" class="btn" data-act="close">Cancel</button></div>';
+}
+function choosePack(i, hand){
+  if(!G || G.phase !== 'shop') return false;
+  const o = G.shopOffers[i]; if(!o || o.kind !== 'pack' || o.sold || o.options.indexOf(hand) === -1) return false;
+  const pc = packPrice(o);
+  if(G.money < pc){ toast('Not enough emeralds.'); sfx.bad(); return false; }
+  G.money -= pc; G.handLevels[hand] += o.levels; o.sold = true; G.pendingPack = null;
+  if(G.tut && G.tut.step === 5) G.tut.step = 6;
+  closeModal(); sfx.buy(); toast(BOOKS[hand] + ': ' + HANDS[hand].name + ' is now level ' + G.handLevels[hand] + '.', 2200); render();
+  return true;
+}
+function reroll(){
+  if(!G || G.phase !== 'shop') return;
+  const pc = rerollPrice();
+  if(G.money < pc){ toast('Not enough emeralds.'); sfx.bad(); return; }
+  G.money -= pc; if(pc > 0) G.rerollCost++;
+  G.rerollsThisShop++;
+  G.shopOffers = genOffers();
+  tone(500,.08,'triangle',.05); render(); announceOffers();
+}
+function sellJoker(i){
+  if(!G || (G.phase !== 'play' && G.phase !== 'shop')) return;
+  const j = G.jokers[i]; if(!j) return;
+  if(j.slots && G.jokers.length - 1 > maxJokers() - j.slots){ toast('Sell another joker first: without ' + j.name + ' you only have ' + (maxJokers() - j.slots) + ' slots.'); sfx.bad(); return; }
+  G.money += sellValue(j);
+  G.jokers.splice(i, 1); G.selJoker = null;
+  tone(400,.08,'triangle',.05); render();
+}
+function nextRound(){
+  if(!G || G.phase !== 'shop') return;
+  startRound(G.roundIdx + 1);
+}
+
+/* =====================================================================
+   Input
+   ===================================================================== */
+function updateRecord(){
+  const b = parseInt(store.get(bestKey(diff)) || '0', 10) || 0, bt = parseInt(store.get(timeKey(diff)) || '0', 10) || 0;
+  let n = 0; JOKERS.forEach(j => { if(found.has(j.id)) n++; });
+  $('#record').textContent = (b ? DIFFS[diff].name + ' best: ' + b + ' of ' + ROUNDS.length + ' rounds cleared · ' : '') + (bt ? 'Best time ' + fmtTime(bt) + ' · ' : '') + 'Jokers found: ' + n + '/' + JOKERS.length;
+}
+
+let drag = null, blockClickUntil = 0;
+function moveJoker(from, to){
+  if(!G || (G.phase !== 'play' && G.phase !== 'shop')) return;
+  if(to < 0 || to >= G.jokers.length || from < 0 || from >= G.jokers.length || from === to) return;
+  const j = G.jokers.splice(from, 1)[0];
+  G.jokers.splice(to, 0, j);
+  G.selJoker = to;
+  tone(480, .05, 'triangle', .05);
+  renderJokers();
+}
+function jokerSlots(){ return Array.prototype.slice.call($('#jokerbar').querySelectorAll('[data-j]')); }
+function endDrag(e){
+  if(!drag || e.pointerId !== drag.id) return;
+  const d = drag; drag = null;
+  try{ d.el.releasePointerCapture(e.pointerId); }catch(err){}
+  if(!d.moved) return;
+  blockClickUntil = Date.now() + 80;
+  if(e.type === 'pointerup' && d.target !== d.idx) moveJoker(d.idx, d.target);
+  else renderJokers();
+}
+
+function openCollection(tag){
+  colRev = false;
+  openModal(collectionHtml(tag || 'all'), true, true);
+}
+
+/* ---------- Tutorial ---------- */
+const TUT_KEY = 'blockpoker.tutorial';
+const TUT = [
+  {title:'Welcome to Block Poker!', text:'A one-minute tutorial: crafting, scoring, base Chips and Mult, the Market and bundles. You will even win a gift.', btn:'Start'},
+  {title:'1 · Crafting', text:'Cards in your hand are materials. Click the glowing cards, <b>2 Diamonds + 1 Stick</b>, to form a recipe.'},
+  {title:'2 · Base Chips and Mult', text:'That is a <b>Diamond Sword</b>! Every recipe has base <b style="color:var(--chips)">Chips</b> and <b style="color:var(--mult)">Mult</b> (here 60 × 6, see the panel on the left). Each card in it adds its own chips too: Diamond 15, Stick 3. Recipe books raise the base later.', btn:'Next'},
+  {title:'3 · Craft it', text:'Score = <b style="color:var(--chips)">Chips</b> × <b style="color:var(--mult)">Mult</b>. Press <b>Craft</b> to play the cards and score them.'},
+  {title:'4 · The Market', text:'Spend emeralds on <b>Jokers</b> (top row). They score from left to right and boost every hand. Every 5 emeralds you keep earn 1 interest, and ↻ rerolls the offers.', btn:'Next'},
+  {title:'5 · Bundles', text:'The bottom row holds <b>bundles</b>. Press <b>View</b>, then pick 1 of the recipe books inside: it raises that recipe by a level (more Chips and Mult). Try the Recipe Pack!', btn:'Next'},
+  {title:'You are ready!', text:'Press the <b>Round 2</b> button when you are done shopping. 📋 lists all recipes and 🃏 all jokers. Good luck!', btn:'Finish'}
+];
+let coachEl = null, coachKey = null;
+function tutExact(){
+  const ids = G.tut.ids;
+  return G.selected.size === ids.length && ids.every(i => G.selected.has(i));
+}
+function tutCheck(){
+  const t = G.tut;
+  if(t.step === 1 && tutExact()) t.step = 2;
+  else if((t.step === 2 || t.step === 3) && !tutExact()) t.step = 1;
+}
+function endTutorial(){
+  store.set(TUT_KEY, '1');
+  if(G) G.tut = null;
+  render();
+}
+function renderCoach(){
+  if(!coachEl){ coachEl = document.createElement('div'); coachEl.id = 'coach'; coachEl.className = 'coach'; }
+  const side = document.querySelector('.board');
+  const t = G && G.tut && TUT[G.tut.step];
+  if(!t){ if(coachEl.parentNode) coachEl.parentNode.removeChild(coachEl); coachKey = null; return; }
+  if(coachEl.parentNode !== side) side.appendChild(coachEl);
+  if(coachKey !== G.tut.step){
+    coachKey = G.tut.step;
+    coachEl.innerHTML = '<div class="ct">' + t.title + '</div><p>' + t.text + '</p><div class="cb">' +
+      (t.btn ? '<button type="button" class="btn go small" data-tut="next">' + t.btn + '</button>' : '') +
+      '<button type="button" class="btn small cs" data-tut="skip">Skip tutorial</button></div>';
+  }
+}
+function startTutorial(){
+  newRun('normal');
+  const d = makeDeck(), take = (m, n) => d.filter(c => c.mat === m).slice(0, n);
+  const dia = take('diamant', 2), stick = take('stock', 1);
+  const hand = dia.concat(stick, take('holz', 2), take('stein', 1), take('eisen', 1), take('gold', 1));
+  const used = new Set(hand.map(c => c.id));
+  G.hand = hand; G.draw = shuffle(d.filter(c => !used.has(c.id))); sortHand();
+  G.tut = {step:0, gift:!store.get(TUT_KEY), ids:dia.concat(stick).map(c => c.id)};
+  render();
+}
+function tutClick(act){
+  if(!G || !G.tut) return;
+  if(act === 'skip'){ endTutorial(); return; }
+  if(G.tut.step === 6){ endTutorial(); return; }
+  G.tut.step++;
+  if(G.tut.step === 3 && !tutExact()) G.tut.step = 1;
+  render();
+}
+
+let clockLast = performance.now();
+function paintClock(){ const el = $('#hTime'); if(el && G) el.textContent = '⏱ ' + fmtTime(G.ms || 0); }
+function tickClock(){
+  const now = performance.now(), dt = now - clockLast; clockLast = now;
+  if(G && G.clock && !document.hidden && dt < 2000){ G.ms += dt; paintClock(); }
+}
+function paintDiff(){
+  document.querySelectorAll('[data-diff]').forEach(b => b.classList.toggle('on', b.dataset.diff === diff));
+  const i = $('#diffInfo'); if(i) i.textContent = DIFFS[diff].info;
+}
+
+function init(){
+  $('#logo').innerHTML = icon('holz') + icon('stein') + icon('eisen') + icon('gold') + icon('diamant');
+  updateRecord(); paintDiff(); setInterval(tickClock, 250);
+  document.querySelectorAll('[data-diff]').forEach(b => b.addEventListener('click', () => { diff = b.dataset.diff; store.set('blockpoker.diff', diff); paintDiff(); updateRecord(); }));
+  $('#bStart').addEventListener('click', () => { if(store.get(TUT_KEY) || (TEST && !params.has('tut'))) newRun(diff); else startTutorial(); });
+  $('#bTutorial').addEventListener('click', () => startTutorial());
+  document.addEventListener('click', e => { const b = e.target.closest('[data-tut]'); if(b) tutClick(b.dataset.tut); });
+  $('#bHelpTitle').addEventListener('click', () => openModal(helpHtml(), true));
+  $('#bColTitle').addEventListener('click', () => openCollection('all'));
+  $('#bHelp').addEventListener('click', () => openModal(helpHtml(), true));
+  $('#bRecipes').addEventListener('click', () => openModal(recipesHtml(), true));
+  $('#bCollection').addEventListener('click', () => openCollection('all'));
+  $('#bSound').addEventListener('click', () => { muted = !muted; store.set('blockpoker.muted', muted ? '1' : ''); music.sync(); if(G) renderHud(); });
+  $('#bMusic').addEventListener('click', () => music.cycle());
+  $('#bMusicT').addEventListener('click', () => music.cycle());
+  renderMusicBtn();
+  $('#bRestart').addEventListener('click', () => openModal('<h2>Start over?</h2><p>Your current run will be lost.</p><div class="mbtns"><button type="button" class="btn warn" data-act="newrun">Start over</button><button type="button" class="btn" data-act="close">Cancel</button></div>', true));
+  $('#bPlay').addEventListener('click', playSelected);
+  $('#bDiscard').addEventListener('click', discardSelected);
+  $('#bSortVal').addEventListener('click', () => { if(G && G.phase === 'play'){ G.sort = 'val'; sortHand(); render(); } });
+  $('#bSortMat').addEventListener('click', () => { if(G && G.phase === 'play'){ G.sort = 'mat'; sortHand(); render(); } });
+  $('#hand').addEventListener('click', e => {
+    const c = e.target.closest('.card'); if(c) toggleCard(parseInt(c.dataset.id, 10));
+  });
+  $('#jokerbar').addEventListener('click', e => {
+    if(Date.now() < blockClickUntil) return;
+    const s = e.target.closest('[data-j]'); if(!s || !G || (G.phase !== 'play' && G.phase !== 'shop')) return;
+    const i = parseInt(s.dataset.j, 10);
+    G.selJoker = G.selJoker === i ? null : i; renderJokers();
+  });
+  $('#jinfo').addEventListener('click', e => {
+    const m = e.target.closest('[data-move]');
+    if(m){ if(G && G.selJoker != null) moveJoker(G.selJoker, G.selJoker + parseInt(m.dataset.move, 10)); return; }
+    if(e.target.closest('[data-closeinfo]')){ G.selJoker = null; renderJokers(); return; }
+    const s = e.target.closest('[data-sell]'); if(s) sellJoker(parseInt(s.dataset.sell, 10));
+  });
+  $('#jokerbar').addEventListener('pointerdown', e => {
+    const s = e.target.closest('[data-j]');
+    if(!s || !G || (G.phase !== 'play' && G.phase !== 'shop')) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    const els = jokerSlots();
+    drag = { idx: parseInt(s.dataset.j, 10), el: s, x0: e.clientX, y0: e.clientY, moved: false, id: e.pointerId, target: parseInt(s.dataset.j, 10),
+             centers: els.map(el => { const b = el.getBoundingClientRect(); return b.left + b.width / 2; }), els: els };
+    try{ s.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  $('#jokerbar').addEventListener('pointermove', e => {
+    if(!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+    if(!drag.moved){
+      if(Math.hypot(dx, dy) < 6) return;
+      drag.moved = true; drag.el.classList.add('dragging');
+    }
+    drag.el.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+    const cx = drag.centers[drag.idx] + dx;
+    let best = drag.idx, bd = Infinity;
+    for(let i = 0; i < drag.centers.length; i++){
+      const dist = Math.abs(cx - drag.centers[i]);
+      if(dist < bd){ bd = dist; best = i; }
+    }
+    best = Math.min(best, G.jokers.length - 1);
+    drag.target = best;
+    drag.els.forEach((el, i) => el.classList.toggle('dropt', i === best && best !== drag.idx));
+  });
+  $('#jokerbar').addEventListener('pointerup', endDrag);
+  $('#jokerbar').addEventListener('pointercancel', endDrag);
+  $('#shopview').addEventListener('click', e => {
+    const b = e.target.closest('[data-buy]');
+    if(b){ buy(parseInt(b.dataset.buy, 10)); return; }
+    if(e.target.closest('#bBoss')){ const bb = bossFor(G.roundIdx); if(bb && !G.bossDone[bb.id]) openModal(bossConfirmHtml(bb), true); return; }
+    if(e.target.closest('#bReroll')) reroll();
+    else if(e.target.closest('#bNext')) nextRound();
+  });
+  $('#modal').addEventListener('click', e => {
+    const col = e.target.closest('[data-col]');
+    if(col){ const w = $('#colwrap'); if(w){ const p = w.parentNode; p.innerHTML = collectionHtml(col.dataset.col); } return; }
+    if(e.target.closest('[data-colrev]')){ const w = $('#colwrap'); if(w){ colRev = !colRev; w.parentNode.innerHTML = collectionHtml(colTag); } return; }
+    const pp = e.target.closest('[data-packpick]');
+    if(pp){ choosePack(G ? G.pendingPack : null, pp.dataset.packpick); return; }
+    const pk = e.target.closest('[data-pick]');
+    if(pk){
+      if(G && G.pendingPick && G.pendingPick.includes(pk.dataset.pick) && G.jokers.length < maxJokers()){
+        const d = JOKER_BY_ID[pk.dataset.pick]; G.jokers.push(makeJoker(d)); markFound(d.id);
+        G.pendingPick = null; toast('★ Legendary joker acquired: ' + d.name + '!', 2600);
+        resumeShop();
+      }
+      return;
+    }
+    const a = e.target.closest('[data-act]');
+    if(a){
+      const act = a.dataset.act;
+      if(act === 'close'){ closeModal(); updateRecord(); }
+      else if(act === 'shop') enterShop();
+      else if(act === 'backshop') resumeShop();
+      else if(act === 'fight'){ const bb = BOSSES.find(x => x.id === a.dataset.boss); if(bb && G && G.phase === 'shop' && !G.bossDone[bb.id]){ closeModal(); startRound(G.roundIdx, bb); } else closeModal(); }
+      else if(act === 'newrun'){ closeModal(); newRun(); }
+      return;
+    }
+    if(e.target === $('#modal') && $('#modal').dataset.dismiss === '1'){ closeModal(); updateRecord(); }
+  });
+  document.addEventListener('click', e => { const i = e.target.closest('[data-info]'); if(i) toast(i.dataset.info, 3800); });
+  document.addEventListener('pointerdown', () => { if(G && G.phase === 'anim') G.fast = true; });
+  const kick = () => { if(music.level > 0 && !music.eng) music.start(); else if(ac && ac.state === 'suspended') ac.resume(); };
+  document.addEventListener('pointerdown', kick); document.addEventListener('keydown', kick);
+  document.addEventListener('visibilitychange', () => { if(!ac) return; if(document.hidden) ac.suspend(); else ac.resume(); });
+  document.addEventListener('keydown', e => {
+    if(modalOpen()){
+      if(e.key === 'Escape' && $('#modal').dataset.dismiss === '1'){ closeModal(); updateRecord(); }
+      return;
+    }
+    if(G && (G.phase === 'play' || G.phase === 'shop') && !$('#game').hidden && G.selJoker != null && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')){
+      e.preventDefault(); moveJoker(G.selJoker, G.selJoker + (e.key === 'ArrowLeft' ? -1 : 1)); return;
+    }
+    if(!G || G.phase !== 'play' || $('#game').hidden) return;
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+    const ki = /^[1-9]$/.test(e.key) ? parseInt(e.key, 10) - 1 : e.key === '0' ? 9 : e.key === '-' ? 10 : -1;
+    if(ki >= 0){ const c = G.hand[ki]; if(c) toggleCard(c.id); }
+    else if(e.key === 'Enter'){ e.preventDefault(); playSelected(); }
+    else if(e.key === 'd' || e.key === 'D' || e.key === 'Backspace'){ e.preventDefault(); discardSelected(); }
+  });
+}
+
+window.BP = {
+  get G(){ return G; }, evaluate, scoreHand, HANDS, JOKERS, ROUNDS, MATS, makeDeck, handStats, makeJoker, rarityOf,
+  newRun, startRound, toggleCard, price, maxJokers, handSize, rerollPrice, bookPrice, packPrice, choosePack, PACKS, SWORD_HANDS, BOSSES, bossFor, resumeShop, sellValue, BOOKS, moveJoker, playSelected, discardSelected, enterShop, buy, reroll, nextRound, sellJoker,
+  get found(){ return found; }, music, createMusic, setRng(f){ rng = f; }, seed(n){ rng = mulberry32(n); }
+};
+
+init();
+})();
+</script>
+</body>
+</html>
