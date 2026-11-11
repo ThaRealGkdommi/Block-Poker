@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Block Poker</title>
-<meta name="game-version" content="2026-11-11.2">
+<meta name="game-version" content="2026-11-11.4">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%231d140e%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22%23ffc61a%22/%3E%3Cpath d=%22M4 9.5 16 16V29L4 22.5Z%22 fill=%22%23b9784a%22/%3E%3Cpath d=%22M28 9.5 16 16V29L28 22.5Z%22 fill=%22%237a4a2a%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221%22/%3E%3Cpath d=%22M4 9.5 16 16 28 9.5M16 16V29M4 9.5V22.5L16 29 28 22.5V9.5L16 3Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2213%22 y=%228%22 width=%226%22 height=%223%22 fill=%22%23fff3a8%22/%3E%3Crect x=%228%22 y=%2217%22 width=%224%22 height=%224%22 fill=%22%232ecc71%22/%3E%3Crect x=%2220%22 y=%2218%22 width=%224%22 height=%224%22 fill=%22%234ad0ff%22/%3E%3C/svg%3E">
 <style>
   :root{
@@ -70,16 +70,12 @@
   .hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 16px;
     background:rgba(11,7,5,.7);border-bottom:3px solid var(--edge);position:sticky;top:0;z-index:20;backdrop-filter:blur(4px)}
   .brand{font-size:18px;letter-spacing:.06em;margin-right:auto}
-  .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--panel);border:3px solid var(--edge);box-shadow:inset 0 0 0 2px var(--line)}
-  .pill svg{width:18px;height:18px;image-rendering:pixelated}
-  .pill.money{color:var(--emerald)}
   .hud-btns{display:flex;gap:6px;flex-wrap:wrap}
 
   /* ---------- Layout ---------- */
   .layout{display:grid;grid-template-columns:1fr;gap:14px;max-width:1180px;margin:0 auto;padding:10px 16px 24px}
   @media (min-width:940px){ .layout{grid-template-columns:280px 1fr;align-items:start} .side{position:sticky;top:70px} }
   .box{background:var(--panel);border:3px solid var(--edge);box-shadow:inset 0 0 0 3px var(--line);padding:12px 14px;margin-bottom:12px}
-  .side .lbl{color:var(--muted);font-weight:400;font-size:14px}
   .rname{font-size:20px;margin:2px 0 8px}
   .scorebig{font-size:34px;color:var(--gold);line-height:1;margin:6px 0}
   .scorebig small{font-size:15px;color:var(--muted);font-weight:400}
@@ -222,6 +218,15 @@
   @keyframes tutpulse{from{box-shadow:0 0 0 0 rgba(255,207,74,0)}to{box-shadow:0 0 14px 4px rgba(255,207,74,.8)}}
   .diffsel{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:14px 0 4px}
   .diffinfo{margin:0 0 10px;text-align:center;min-height:1.4em}
+  .statrow{display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+  .statrow .srnd{flex:1 1 100%;text-align:center;color:var(--gold)}
+  .statrow span{display:inline-flex;align-items:center;gap:6px}
+  .statrow svg{width:18px;height:18px;image-rendering:pixelated}
+  .statrow .money{color:var(--emerald)}
+  .burger{display:grid;gap:3px;width:18px}
+  .burger i{display:block;height:3px;background:currentColor}
+  .menulist{display:grid;gap:10px;margin-top:14px}
+  .menulist .btn{width:100%;font-size:18px;padding:12px}
   .mclose{position:sticky;top:0;float:right;z-index:2;width:36px;height:36px;min-height:0;padding:0;margin:-6px -6px 0 8px;font-size:22px;line-height:1;display:grid;place-items:center}
   .mpanel h2{margin:0 0 10px;font-size:24px}
   .mpanel p,.mpanel li{font-weight:400}
@@ -265,7 +270,6 @@
   @media (max-width:600px){
     .hand{--cw:min(76px, calc((100vw - 32px - 40px) / 4));flex-wrap:wrap;gap:22px 8px;min-height:0;padding:26px 0 8px}
     .controls .btn:not(.small){flex:1 1 40%}
-    .hud .pill{padding:2px 6px;font-size:13px;gap:4px}
     .hud .brand{display:none}
   }
   @media (max-height:680px){
@@ -314,16 +318,10 @@
   <section id="game" class="screen" hidden>
     <header class="hud">
       <div class="brand">BLOCK POKER</div>
-      <span class="pill" id="hRound"></span>
-      <span class="pill money" id="hMoney"></span>
-      <span class="pill" id="hTime" title="Run time"></span>
       <div class="hud-btns">
-        <button class="btn small ic" id="bRecipes" type="button" title="Recipes" aria-label="Recipes">📋</button>
-        <button class="btn small ic" id="bCollection" type="button" title="Joker collection" aria-label="Joker collection">🃏</button>
-        <button class="btn small ic" id="bHelp" type="button" title="How to play" aria-label="How to play">❓</button>
         <button class="btn small ic" id="bMusic" type="button" title="Music" aria-label="Music volume">🎵</button>
         <button class="btn small ic" id="bSound" type="button" title="Sound on" aria-label="Toggle sound">🔊</button>
-        <button class="btn small warn ic" id="bRestart" type="button" title="Restart" aria-label="Restart">↺</button>
+        <button class="btn small ic" id="bMenu" type="button" title="Menu" aria-label="Menu"><span class="burger" aria-hidden="true"><i></i><i></i><i></i></span></button>
       </div>
     </header>
     <div class="layout">
@@ -354,9 +352,6 @@
 (function(){
 'use strict';
 
-/* =====================================================================
-   Helpers
-   ===================================================================== */
 const $ = (s, r) => (r || document).querySelector(s);
 const params = new URLSearchParams(location.search);
 const TEST = params.has('test');
@@ -370,9 +365,6 @@ const store = {
 function fmt(x){ return Number.isInteger(x) ? String(x) : String(+x.toFixed(2)); }
 function num(n){ return n.toLocaleString('en-US'); }
 
-/* =====================================================================
-   Pixel art (hand-drawn, 8x8)
-   ===================================================================== */
 const PIX = {
   holz:{pal:{W:'#c9964f',w:'#9a6a30',x:'#6e4a1f'},map:[
     'WWWWWWWW','WwWWWWwW','xxxxxxxx','WWWWwWWW','WWwWWWWW','xxxxxxxx','WWWWWWWW','WwWWWwWW']},
@@ -485,7 +477,6 @@ function evaluate(cards, levels){
    Bonuses:    hands, discards, slots, handSize, discount, shopSlots, freeReroll, interestCap, playMoney, endMoney,
                packOptions, bookDiscount, rerollDiscount, sellBonus   (onDiscard(self), onRoundWin(self) may return a message)
 */
-const MATS_IN = (c, ...m) => m.indexOf(c.mat) !== -1;
 const JOKERS = [
   /* --- classics --- */
   {id:'schwein', tag:'utility', emoji:'🐷', name:'Piglet', cost:6, desc:'+1 hand each round.', hands:1},
@@ -621,9 +612,6 @@ const BOSSES = [
     prize:'+1 level on EVERY recipe and +20 emeralds.'}
 ];
 
-/* =====================================================================
-   State
-   ===================================================================== */
 let G = null;
 let muted = store.get('blockpoker.muted') === '1';
 let found = new Set();
@@ -728,9 +716,6 @@ function updatePreview(){
   G.calc = {name: HANDS[ev.type].name + ' Lv.' + lv, emoji: HANDS[ev.type].emoji, type: ev.type, chips: st.chips, mult: st.mult, total: null};
 }
 
-/* =====================================================================
-   Scoring
-   ===================================================================== */
 function scoreHand(cards){
   const ev = evaluate(cards, G.handLevels);
   const lv = G.handLevels[ev.type], def = HANDS[ev.type];
@@ -784,9 +769,6 @@ function scoreHand(cards){
   return {type:ev.type, name:def.name + ' Lv.' + lv, emoji:def.emoji, steps:steps, chips:chips, mult:mult, total:Math.floor(chips * mult)};
 }
 
-/* =====================================================================
-   Sound
-   ===================================================================== */
 let ac = null;
 function tone(freq, dur, type, vol){
   if(muted || TEST) return;
@@ -814,9 +796,6 @@ const sfx = {
   bad(){ tone(150,.15,'sawtooth',.05); }
 };
 
-/* =====================================================================
-   Ambient music: generated live with the Web Audio API (no files needed)
-   ===================================================================== */
 const MUSIC_CALM = [ {r:45, n:[57,60,64,67]}, {r:41, n:[57,60,64,65]}, {r:48, n:[55,59,64,67]}, {r:43, n:[55,59,62,64]} ];
 const MUSIC_BOSS = [ {r:45, n:[57,60,64]}, {r:41, n:[57,60,65]}, {r:38, n:[57,62,65]}, {r:40, n:[56,59,64]} ];
 const MUSIC_PENT = [69,72,74,76,79,81,84];
@@ -915,9 +894,6 @@ function renderMusicBtn(){
   ['#bMusic', '#bMusicT'].forEach(id => { const b = $(id); if(!b) return; b.title = t; b.setAttribute('aria-label', t); b.classList.toggle('off', music.level === 0); });
 }
 
-/* =====================================================================
-   Rendering
-   ===================================================================== */
 // the launcher sets window.BP_LAUNCHER, so the version-select button only exists when started from it
 function versionBtn(){ return window.BP_LAUNCHER ? '<button type="button" class="btn" data-act="versions">Version select</button>' : ''; }
 function toMenu(){
@@ -946,7 +922,7 @@ function render(){
   if(!G) return;
   document.documentElement.style.setProperty('--hn', String(Math.max(HAND_SIZE, handSize())));
   updatePreview();
-  renderHud(); renderSide(); renderBoss(); renderJokers(); renderCoach();
+  renderSide(); renderHud(); renderBoss(); renderJokers(); renderCoach();
   const shop = G.phase === 'shop';
   $('#roundview').hidden = shop;
   $('#shopview').hidden = !shop;
@@ -979,7 +955,7 @@ function renderSide(){
   const cH = shop ? Math.max(1, baseHands() + bonus('hands')) : G.handsLeft;
   const cD = shop ? Math.max(0, baseDiscards() + bonus('discards')) : G.discardsLeft;
   const cK = shop ? Math.max(0, makeDeck().length - handSize()) : G.draw.length;
-  h += '<div class="box"><div class="counters">' +
+  h += '<div class="box"><div class="statrow"><span id="hRound" class="srnd"></span><span id="hMoney" class="money"></span><span id="hTime" title="Run time"></span></div><div class="counters">' +
     '<div class="cnt h"><b id="nHands">' + cH + '</b><span>Hands</span></div>' +
     '<div class="cnt d"><b id="nDisc">' + cD + '</b><span>Discards</span></div>' +
     '<div class="cnt k"><b>' + cK + '</b><span>Deck</span></div></div></div>';
@@ -1153,9 +1129,6 @@ function collectionHtml(tag){
     '<div class="colbar">' + bar + '<button type="button" class="btn small" data-colrev="1" title="Reverse the rarity order">⇅ ' + (colRev ? 'Legendary → Common' : 'Common → Legendary') + '</button></div><div class="colgrid">' + tiles + '</div></div>';
 }
 
-/* =====================================================================
-   Actions
-   ===================================================================== */
 function toggleCard(id){
   if(!G || G.phase !== 'play') return;
   if(G.selected.has(id)) G.selected.delete(id);
@@ -1492,9 +1465,6 @@ function nextRound(){
   startRound(G.roundIdx + 1);
 }
 
-/* =====================================================================
-   Input
-   ===================================================================== */
 function updateRecord(){
   const b = parseInt(store.get(bestKey(diff)) || '0', 10) || 0, bt = parseInt(store.get(timeKey(diff)) || '0', 10) || 0;
   let n = 0; JOKERS.forEach(j => { if(found.has(j.id)) n++; });
@@ -1596,6 +1566,9 @@ function paintDiff(){
   const i = $('#diffInfo'); if(i) i.textContent = DIFFS[diff].info;
 }
 
+const CONFIRM_RETRY = '<h2>Start over?</h2><p>Your current run will be lost.</p><div class="mbtns"><button type="button" class="btn warn" data-act="newrun">Start over</button><button type="button" class="btn" data-act="close">Cancel</button></div>';
+const CONFIRM_HOME = '<h2>Back to the main menu?</h2><p>Your current run will be lost.</p><div class="mbtns"><button type="button" class="btn warn" data-act="menu">Main menu</button><button type="button" class="btn" data-act="close">Cancel</button></div>';
+
 function init(){
   $('#logo').innerHTML = icon('holz') + icon('stein') + icon('eisen') + icon('gold') + icon('diamant');
   updateRecord(); paintDiff(); setInterval(tickClock, 250);
@@ -1607,14 +1580,16 @@ function init(){
   document.addEventListener('click', e => { const b = e.target.closest('[data-tut]'); if(b) tutClick(b.dataset.tut); });
   $('#bHelpTitle').addEventListener('click', () => openModal(helpHtml(), true));
   $('#bColTitle').addEventListener('click', () => openCollection('all'));
-  $('#bHelp').addEventListener('click', () => openModal(helpHtml(), true));
-  $('#bRecipes').addEventListener('click', () => openModal(recipesHtml(), true));
-  $('#bCollection').addEventListener('click', () => openCollection('all'));
   $('#bSound').addEventListener('click', () => { muted = !muted; store.set('blockpoker.muted', muted ? '1' : ''); music.sync(); if(G) renderHud(); });
   $('#bMusic').addEventListener('click', () => music.cycle());
   $('#bMusicT').addEventListener('click', () => music.cycle());
   renderMusicBtn();
-  $('#bRestart').addEventListener('click', () => openModal('<h2>Start over?</h2><p>Your current run will be lost.</p><div class="mbtns"><button type="button" class="btn warn" data-act="newrun">Start over</button><button type="button" class="btn" data-act="close">Cancel</button></div>', true));
+  $('#bMenu').addEventListener('click', () => openModal('<button type="button" class="btn mclose" data-act="close" title="Close" aria-label="Close">✕</button><h2>Menu</h2><div class="menulist">' +
+    '<button type="button" class="btn" data-act="mhelp">❓ How to play</button>' +
+    '<button type="button" class="btn" data-act="mrec">📋 Recipes</button>' +
+    '<button type="button" class="btn" data-act="mcol">🃏 Collection</button>' +
+    '<button type="button" class="btn warn" data-act="mretry">↺ Retry</button>' +
+    '<button type="button" class="btn warn" data-act="mhome">🏠 Main menu</button></div>', false));
   $('#bPlay').addEventListener('click', playSelected);
   $('#bDiscard').addEventListener('click', discardSelected);
   $('#bSortVal').addEventListener('click', () => { if(G && G.phase === 'play'){ G.sort = 'val'; sortHand(); render(); } });
@@ -1694,6 +1669,11 @@ function init(){
       else if(act === 'fight'){ const bb = BOSSES.find(x => x.id === a.dataset.boss); if(bb && G && G.phase === 'shop' && !G.bossDone[bb.id]){ closeModal(); startRound(G.roundIdx, bb); } else closeModal(); }
       else if(act === 'newrun'){ closeModal(); newRun(); }
       else if(act === 'menu'){ closeModal(); toMenu(); }
+      else if(act === 'mhelp') openModal(helpHtml(), true);
+      else if(act === 'mrec') openModal(recipesHtml(), true);
+      else if(act === 'mcol') openCollection('all');
+      else if(act === 'mretry') openModal(CONFIRM_RETRY, true);
+      else if(act === 'mhome') openModal(CONFIRM_HOME, true);
       else if(act === 'versions'){ location.reload(); }
       return;
     }
