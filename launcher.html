@@ -36,7 +36,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Block Poker</title>
-<meta name="game-version" content="2026-11-11.1">
+<meta name="game-version" content="2026-11-11.2">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%231d140e%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22%23ffc61a%22/%3E%3Cpath d=%22M4 9.5 16 16V29L4 22.5Z%22 fill=%22%23b9784a%22/%3E%3Cpath d=%22M28 9.5 16 16V29L28 22.5Z%22 fill=%22%237a4a2a%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221%22/%3E%3Cpath d=%22M4 9.5 16 16 28 9.5M16 16V29M4 9.5V22.5L16 29 28 22.5V9.5L16 3Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2213%22 y=%228%22 width=%226%22 height=%223%22 fill=%22%23fff3a8%22/%3E%3Crect x=%228%22 y=%2217%22 width=%224%22 height=%224%22 fill=%22%232ecc71%22/%3E%3Crect x=%2220%22 y=%2218%22 width=%224%22 height=%224%22 fill=%22%234ad0ff%22/%3E%3C/svg%3E">
 <style>
   :root{
@@ -334,6 +334,7 @@
       <div class="tbtns">
         <button class="btn go" id="bStart" type="button">Start game</button>
         <button class="btn" id="bTutorial" type="button">Tutorial</button>
+        <button class="btn" id="bVersions" type="button" hidden>Version select</button>
         <button class="btn" id="bHelpTitle" type="button">How to play</button>
         <button class="btn" id="bColTitle" type="button">Collection</button>
         <button class="btn ic" id="bMusicT" type="button" title="Music" aria-label="Music volume">🎵</button>
@@ -949,6 +950,13 @@ function renderMusicBtn(){
 /* =====================================================================
    Rendering
    ===================================================================== */
+// the launcher sets window.BP_LAUNCHER, so the version-select button only exists when started from it
+function versionBtn(){ return window.BP_LAUNCHER ? '<button type="button" class="btn" data-act="versions">Version select</button>' : ''; }
+function toMenu(){
+  if(G) G.clock = false;
+  showScreen('title'); updateRecord(); paintDiff();
+  const v = $('#bVersions'); if(v) v.hidden = !window.BP_LAUNCHER;
+}
 function showScreen(name){
   $('#title').hidden = name !== 'title';
   $('#game').hidden = name !== 'game';
@@ -1343,7 +1351,7 @@ function victory(){
   render();
   openModal('<h2>Victory!</h2><p>You cleared all 8 rounds on ' + DIFFS[G.diff].name + ' and opened the Void Gate.</p><p><b>Time: ' + fmtTime(G.ms) + '</b>' + (nb ? ' · new best time!' : ' · best ' + fmtTime(bt)) + '</p>' +
     '<p class="muted">Your jokers: ' + (G.jokers.length ? G.jokers.map(j => j.emoji + ' ' + j.name).join(', ') : 'none') + '</p>' +
-    '<div class="mbtns"><button type="button" class="btn go" data-act="newrun">New game</button></div>', false);
+    '<div class="mbtns"><button type="button" class="btn go" data-act="menu">Main menu</button>' + versionBtn() + '</div>', false);
 }
 
 function gameOver(){
@@ -1354,7 +1362,7 @@ function gameOver(){
   const r = ROUNDS[G.roundIdx];
   openModal('<h2>The Night Wins</h2><p>Round ' + (G.roundIdx + 1) + ' (' + r.name + '): ' + num(G.score) + ' of ' + num(r.target) + ' points.</p>' +
     '<p class="muted">You were ' + num(r.target - G.score) + ' points short. More jokers and higher recipe levels will help.</p>' +
-    '<div class="mbtns"><button type="button" class="btn go" data-act="newrun">Try again</button></div>', false);
+    '<div class="mbtns"><button type="button" class="btn go" data-act="menu">Main menu</button>' + versionBtn() + '</div>', false);
 }
 
 /* ---------- Optional boss challenges ---------- */
@@ -1626,6 +1634,8 @@ function init(){
   document.querySelectorAll('[data-diff]').forEach(b => b.addEventListener('click', () => { diff = b.dataset.diff; store.set('blockpoker.diff', diff); paintDiff(); updateRecord(); }));
   $('#bStart').addEventListener('click', () => { if(store.get(TUT_KEY) || (TEST && !params.has('tut'))) newRun(diff); else startTutorial(); });
   $('#bTutorial').addEventListener('click', () => startTutorial());
+  $('#bVersions').hidden = !window.BP_LAUNCHER;
+  $('#bVersions').addEventListener('click', () => location.reload());
   document.addEventListener('click', e => { const b = e.target.closest('[data-tut]'); if(b) tutClick(b.dataset.tut); });
   $('#bHelpTitle').addEventListener('click', () => openModal(helpHtml(), true));
   $('#bColTitle').addEventListener('click', () => openCollection('all'));
@@ -1715,6 +1725,8 @@ function init(){
       else if(act === 'backshop') resumeShop();
       else if(act === 'fight'){ const bb = BOSSES.find(x => x.id === a.dataset.boss); if(bb && G && G.phase === 'shop' && !G.bossDone[bb.id]){ closeModal(); startRound(G.roundIdx, bb); } else closeModal(); }
       else if(act === 'newrun'){ closeModal(); newRun(); }
+      else if(act === 'menu'){ closeModal(); toMenu(); }
+      else if(act === 'versions'){ location.reload(); }
       return;
     }
     if(e.target === $('#modal') && $('#modal').dataset.dismiss === '1'){ closeModal(); updateRecord(); }
@@ -1771,6 +1783,7 @@ init();
   $('vSaved').textContent = hasSaved ? savedVer : 'none yet (built-in copy ' + builtInVer + ' available)';
 
   function run(html){
+    window.BP_LAUNCHER = true;   // tells the game to show its "Version select" buttons
     document.open(); document.write(html); document.close();
   }
   function fetchLatest(timeoutMs){
