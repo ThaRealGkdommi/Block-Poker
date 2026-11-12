@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Block Poker</title>
-<meta name="game-version" content="2026-11-12.3">
+<meta name="game-version" content="2026-11-12.5">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%231d140e%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22%23ffc61a%22/%3E%3Cpath d=%22M4 9.5 16 16V29L4 22.5Z%22 fill=%22%23b9784a%22/%3E%3Cpath d=%22M28 9.5 16 16V29L28 22.5Z%22 fill=%22%237a4a2a%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221%22/%3E%3Cpath d=%22M4 9.5 16 16 28 9.5M16 16V29M4 9.5V22.5L16 29 28 22.5V9.5L16 3Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2213%22 y=%228%22 width=%226%22 height=%223%22 fill=%22%23fff3a8%22/%3E%3Crect x=%228%22 y=%2217%22 width=%224%22 height=%224%22 fill=%22%232ecc71%22/%3E%3Crect x=%2220%22 y=%2218%22 width=%224%22 height=%224%22 fill=%22%234ad0ff%22/%3E%3C/svg%3E">
 <style>
   :root{
@@ -29,6 +29,7 @@
       repeating-conic-gradient(#1a130e 0% 25%, #17100b 0% 50%) 0 0 / 32px 32px;
     background-color:var(--bg);
   }
+  #bg{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;image-rendering:pixelated;object-fit:cover}
   button{font:inherit;color:inherit}
   :focus-visible{outline:3px solid var(--gold);outline-offset:2px}
   .muted{color:var(--muted);font-weight:400}
@@ -70,7 +71,13 @@
   .hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 16px;
     background:rgba(11,7,5,.7);border-bottom:3px solid var(--edge);position:sticky;top:0;z-index:20;backdrop-filter:blur(4px)}
   .brand{font-size:18px;letter-spacing:.06em;margin-right:auto}
-  .hud-btns{display:flex;gap:6px;flex-wrap:wrap}
+  .nbtns{position:absolute;top:6px;right:36px;display:flex;gap:4px}
+  .nbtns .btn.small{min-height:28px;min-width:30px;padding:2px 6px;font-size:14px}
+  .side .box:first-child{position:relative}
+  .side .rname{padding-right:96px}
+  .vrow{display:grid;grid-template-columns:110px 1fr 36px;align-items:center;gap:10px;margin:14px 0}
+  .vrow input{width:100%;accent-color:var(--gold)}
+  .vrow b{text-align:right}
 
   /* ---------- Layout ---------- */
   .layout{display:grid;grid-template-columns:1fr;gap:14px;max-width:1180px;margin:0 auto;padding:10px 16px 24px}
@@ -253,9 +260,7 @@
   .toast.show{opacity:1;transform:translate(-50%,0)}
 
   @media (max-width:939px){
-    .hud{position:static;padding:8px 12px;gap:6px}
-    .brand{display:none}
-    .hud-btns{margin-left:auto}
+    .hud{display:none}
     .layout{padding:10px 12px 40px;gap:10px}
     .side{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .side .box{margin:0;padding:8px 10px}
@@ -287,6 +292,7 @@
 </style>
 </head>
 <body>
+<canvas id="bg" aria-hidden="true"></canvas>
 <noscript>This game needs JavaScript.</noscript>
 <div id="app">
 
@@ -310,7 +316,7 @@
         <button class="btn" id="bVersions" type="button" hidden>Version select</button>
         <button class="btn" id="bHelpTitle" type="button">How to play</button>
         <button class="btn" id="bColTitle" type="button">Collection</button>
-        <button class="btn ic" id="bMusicT" type="button" title="Music" aria-label="Music volume">🎵</button>
+        <button class="btn ic" id="bSoundT" type="button">🔊</button>
       </div>
       <div class="record" id="record"></div>
     </div>
@@ -319,11 +325,6 @@
   <section id="game" class="screen" hidden>
     <header class="hud">
       <div class="brand">BLOCK POKER</div>
-      <div class="hud-btns">
-        <button class="btn small ic" id="bMusic" type="button" title="Music" aria-label="Music volume">🎵</button>
-        <button class="btn small ic" id="bSound" type="button" title="Sound on" aria-label="Toggle sound">🔊</button>
-        <button class="btn small ic" id="bMenu" type="button" title="Menu" aria-label="Menu"><span class="burger" aria-hidden="true"><i></i><i></i><i></i></span></button>
-      </div>
     </header>
     <div class="layout">
       <aside class="side" id="side"></aside>
@@ -618,7 +619,8 @@ const BOSSES = [
 ];
 
 let G = null;
-let muted = store.get('blockpoker.muted') === '1';
+const vols = {music:80, sfx:80};   // 0-100, saved per browser
+['music','sfx'].forEach(k => { const v = parseInt(store.get('blockpoker.v' + k), 10); if(v >= 0 && v <= 100) vols[k] = v; });
 let found = new Set();
 try{ found = new Set(JSON.parse(store.get('blockpoker.found') || '[]')); }catch(e){ found = new Set(); }
 function markFound(id){
@@ -776,13 +778,13 @@ function scoreHand(cards){
 
 let ac = null;
 function tone(freq, dur, type, vol){
-  if(muted || TEST) return;
+  if(!vols.sfx || TEST) return;
   try{
     ac = ac || new (window.AudioContext || window.webkitAudioContext)();
     if(ac.state === 'suspended') ac.resume();
     const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
     o.type = type || 'square'; o.frequency.value = freq;
-    g.gain.setValueAtTime(vol || 0.04, t);
+    g.gain.setValueAtTime((vol || 0.04) * vols.sfx / 80, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     o.connect(g); g.connect(ac.destination);
     o.start(t); o.stop(t + dur + 0.02);
@@ -869,8 +871,8 @@ function createMusic(ctx){
   };
 }
 const music = {
-  eng:null, timer:null, level:(() => { const v = parseInt(store.get('blockpoker.music') || '2', 10); return v >= 0 && v <= 2 ? v : 2; })(),
-  vol(){ return muted ? 0 : [0, .28, .55][this.level]; },
+  eng:null, timer:null,
+  vol(){ return vols.music / 100 * .7; },
   mood(){ return (!G || G.phase === 'shop') ? 'calm' : G.bossFight ? 'boss' : 'play'; },
   tick(){ if(ac && this.eng) this.eng.schedule(ac.currentTime + 1.8, this.mood()); },
   start(){
@@ -887,18 +889,23 @@ const music = {
     const v = this.vol(); this.eng.setLevel(v, ac.currentTime);
     if(v > 0 && !this.timer){ this.eng.resetClock(ac.currentTime); this.tick(); this.timer = setInterval(() => this.tick(), 400); }
     else if(v === 0 && this.timer){ clearInterval(this.timer); this.timer = null; }
-  },
-  cycle(){
-    this.level = (this.level + 2) % 3; store.set('blockpoker.music', String(this.level));
-    if(this.level > 0) this.start(); else this.sync();
-    renderMusicBtn(); toast('Music: ' + ['off', 'quiet', 'normal'][this.level], 1200);
   }
 };
-function renderMusicBtn(){
-  const t = 'Music: ' + ['off', 'quiet', 'normal'][music.level] + ' (click to change)';
-  ['#bMusic', '#bMusicT'].forEach(id => { const b = $(id); if(!b) return; b.title = t; b.setAttribute('aria-label', t); b.classList.toggle('off', music.level === 0); });
+function openSound(){
+  const row = (k, label) => '<label class="vrow"><span>' + label + '</span><input type="range" min="0" max="100" step="5" value="' + vols[k] + '" data-vol="' + k + '" aria-label="' + label + ' volume"><b id="v_' + k + '">' + vols[k] + '</b></label>';
+  openModal('<button type="button" class="btn mclose" data-act="close" title="Close" aria-label="Close">✕</button><h2>Sound</h2>' + row('music', '🎵 Music') + row('sfx', '🔊 Effects'), true);
 }
-
+function setVol(k, v){
+  vols[k] = v; store.set('blockpoker.v' + k, String(v));
+  const o = $('#v_' + k); if(o) o.textContent = v;
+  if(k === 'music'){ if(v > 0) music.start(); else music.sync(); if(v > 0) music.sync(); }
+  else if(v > 0) sfx.pick();
+  paintSoundBtns();
+}
+function paintSoundBtns(){
+  const off = !vols.music && !vols.sfx, t = off ? 'Sound (all off)' : 'Sound';
+  ['#bSound', '#bSoundT'].forEach(id => { const b = $(id); if(!b) return; b.textContent = off ? '🔇' : '🔊'; b.title = t; b.setAttribute('aria-label', t); });
+}
 // the launcher sets window.BP_LAUNCHER, so the version-select button only exists when started from it
 function versionBtn(){ return window.BP_LAUNCHER ? '<button type="button" class="btn" data-act="versions">Version select</button>' : ''; }
 function toMenu(){
@@ -939,7 +946,6 @@ function renderHud(){
   paintClock();
   $('#hMoney').innerHTML = icon('smaragd') + '<span>' + G.money + '</span>';
   $('#hMoney').setAttribute('aria-label', G.money + ' emeralds');
-  $('#bSound').textContent = muted ? '🔇' : '🔊'; $('#bSound').title = muted ? 'Sound off' : 'Sound on'; renderMusicBtn();
 }
 
 function renderSide(){
@@ -951,7 +957,10 @@ function renderSide(){
   let h = '<div class="box">' + infoBtn(rinfo, 'corner') +
     '<div class="rname">' + r.name + '</div>' +
     '<div class="scorebig"><span id="scoreNum">' + num(Math.floor(G.shownScore)) + '</span> <small>/ ' + num(r.target) + '</small></div>' +
-    '<div class="bar"><i id="bar" style="width:' + pct + '%"></i></div></div>';
+    '<div class="bar"><i id="bar" style="width:' + pct + '%"></i></div>' +
+    '<div class="nbtns"><button class="btn small ic" id="bSound" type="button">🔊</button>' +
+    '<button class="btn small ic" id="bMenu" type="button" title="Menu" aria-label="Menu"><span class="burger" aria-hidden="true"><i></i><i></i><i></i></span></button></div></div>';
+  paintSoundBtns();
   h += '<div class="box calc"><div class="cname" id="cName"></div>' +
     '<div class="crow"><span class="cc" id="cChips"></span><span class="x">×</span><span class="cm" id="cMult"></span></div>' +
     '<div class="crow clab" aria-hidden="true"><span>Chips</span><span class="x">×</span><span>Mult</span></div>' +
@@ -1096,7 +1105,7 @@ function helpHtml(){
     '<li>After rounds 2, 4 and 6 the Market offers an <b>optional Boss challenge</b>: an extra round with a special rule and a big prize. If you fail you only lose half your emeralds.</li>' +
     '<li>The longer the Market shows no <b>Rare</b> or <b>Legendary</b> joker, the more likely one appears. Later rounds also favour them.</li>' +
     '<li><b>Recipe books</b> raise a recipe by a level. You find them in the Market inside <b>bundles</b>: open one and pick 1 of 3 or 5 books (a Recipe Pack is always there, a Grand Pack and a Sword Pack show up sometimes). Boss prizes and a few jokers give levels too.</li>' +
-    '<li>The 🎵 button changes the ambient music volume (normal, quiet, off). 🔊 mutes all sound.</li>' +
+    '<li>The 🔊 button opens the sound menu with separate music and effects volume.</li>' +
     '<li>Tap the little <b>i</b> icons for extra info (rewards, keyboard shortcuts, joker tips).</li>' +
     '<li>Jokers score <b>from left to right</b>. Drag them with the mouse or finger (or use ◀ ▶) to change the order. A ×Mult joker is strongest at the far right.</li>' +
     '<li><b>Retrigger</b> jokers make a scoring card count again, and every card joker fires again with it.</li>' +
@@ -1573,6 +1582,79 @@ function tutClick(act){
   render();
 }
 
+/* ---------- Animated background: low-res canvas, night sky; boss fights recolor it (red storm, embers, lightning) ---------- */
+const BG = (function(){
+  const W = 320, H = 180, HORIZON = 128;
+  const PAL = {   // top/bottom sky, star, moon/glow, particle colours (rgb)
+    calm:   {top:[10,14,38], bot:[28,22,58], star:[255,255,235], glow:[255,236,160], fx:[190,255,120], hill:[8,10,24]},
+    bone:   {top:[8,26,22],  bot:[30,56,46], star:[200,255,225], glow:[200,235,215], fx:[170,255,200], hill:[5,16,14]},
+    golem:  {top:[34,8,4],   bot:[96,30,8],  star:[255,200,140], glow:[255,150,60],  fx:[255,140,40],  hill:[22,5,2]},
+    dragon: {top:[22,4,38],  bot:[74,14,70], star:[255,170,255], glow:[255,90,160],  fx:[255,80,200],  hill:[14,2,24]}
+  };
+  const cur = JSON.parse(JSON.stringify(PAL.calm));
+  const r = (a, b) => a + Math.random() * (b - a);
+  const stars = Array.from({length:90}, () => ({x:r(0,W) | 0, y:r(0,HORIZON - 10) | 0, ph:r(0,6.28), sp:r(.4,1.6)}));
+  const clouds = Array.from({length:6}, () => ({x:r(0,W), y:r(8,70) | 0, w:r(40,90) | 0, sp:r(.05,.18)}));
+  const fx = Array.from({length:44}, () => ({x:r(0,W), y:r(HORIZON - 30,H), vx:r(-.15,.15), vy:r(-.2,.2), ph:r(0,6.28)}));
+  const hills = Array.from({length:W}, (_, x) => HORIZON + 10 + Math.sin(x / 23) * 7 + Math.sin(x / 9 + 2) * 3 + Math.sin(x / 61) * 9);
+  let cv, g, last = 0, bolt = null, flash = 0, nextBolt = 2, t = 0;
+  const mix = (a, b, k) => a + (b - a) * k;
+  const col = (c, a) => 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + (a === undefined ? 1 : a) + ')';
+  function modeId(){ return (typeof G !== 'undefined' && G && G.bossFight && PAL[G.bossFight.id]) ? G.bossFight.id : 'calm'; }
+  function makeBolt(){
+    const pts = []; let x = r(40, W - 40), y = 0;
+    while(y < HORIZON){ pts.push([x | 0, y | 0]); x += r(-9, 9); y += r(8, 16); }
+    return pts;
+  }
+  function frame(now){
+    requestAnimationFrame(frame);
+    if(now - last < 33 || document.hidden) return;   // ~30 fps
+    const dt = Math.min(.1, (now - last) / 1000); last = now; t += dt;
+    const id = modeId(), boss = id !== 'calm', P = PAL[id];
+    ['top','bot','star','glow','fx','hill'].forEach(k => { for(let i = 0; i < 3; i++) cur[k][i] = mix(cur[k][i], P[k][i], .05); });
+    // sky
+    for(let y = 0; y < H; y += 4){ const k = y / H; g.fillStyle = col([mix(cur.top[0], cur.bot[0], k), mix(cur.top[1], cur.bot[1], k), mix(cur.top[2], cur.bot[2], k)]); g.fillRect(0, y, W, 4); }
+    // stars
+    stars.forEach(s => { const a = .35 + .65 * Math.abs(Math.sin(t * s.sp + s.ph)); g.fillStyle = col(cur.star, a * (boss ? .6 : 1)); g.fillRect(s.x, s.y, 1, 1); });
+    // moon
+    const mx = 250 + Math.sin(t * .02) * 6, my = 36;
+    g.fillStyle = col(cur.glow, .12); g.fillRect(mx - 18, my - 18, 36, 36);
+    g.fillStyle = col(cur.glow); g.fillRect(mx - 10, my - 8, 20, 16); g.fillRect(mx - 8, my - 10, 16, 20);
+    g.fillStyle = col(cur.bot, .35); g.fillRect(mx - 4, my - 3, 4, 3); g.fillRect(mx + 3, my + 2, 3, 3);
+    // clouds
+    clouds.forEach(c => {
+      c.x += c.sp * (boss ? 2.4 : 1); if(c.x > W + 10) c.x = -c.w;
+      g.fillStyle = col([cur.top[0] + 14, cur.top[1] + 14, cur.top[2] + 18], boss ? .75 : .5);
+      g.fillRect(c.x | 0, c.y, c.w, 5); g.fillRect((c.x + 6) | 0, c.y - 3, c.w * .6 | 0, 3); g.fillRect((c.x + 12) | 0, c.y + 5, c.w * .7 | 0, 3);
+    });
+    // lightning in boss nights
+    if(boss){
+      nextBolt -= dt;
+      if(nextBolt <= 0){ bolt = makeBolt(); flash = 1; nextBolt = r(3, 7); }
+    }
+    if(flash > 0){
+      g.fillStyle = 'rgba(255,255,255,' + (flash * .22) + ')'; g.fillRect(0, 0, W, H);
+      if(bolt){ g.fillStyle = col(cur.glow); bolt.forEach(p => g.fillRect(p[0], p[1], 2, 9)); }
+      flash -= dt * 4; if(flash <= .35) bolt = null;
+    }
+    // hills
+    g.fillStyle = col(cur.hill);
+    for(let x = 0; x < W; x++) g.fillRect(x, hills[x] | 0, 1, H);
+    // fireflies (calm) / embers (boss)
+    fx.forEach(p => {
+      p.ph += dt * 3;
+      if(boss){ p.x += Math.sin(p.ph) * .35 + p.vx; p.y -= 0.6 + Math.abs(p.vy) * 3; if(p.y < -2){ p.y = H + 2; p.x = r(0, W); } }
+      else { p.x += p.vx + Math.sin(p.ph * .5) * .15; p.y += p.vy * .6 + Math.cos(p.ph * .4) * .1; if(p.y < HORIZON - 10) p.vy = Math.abs(p.vy); if(p.y > H - 4) p.vy = -Math.abs(p.vy); if(p.x < 0) p.x = W; if(p.x > W) p.x = 0; }
+      const a = boss ? .85 : .25 + .75 * Math.max(0, Math.sin(p.ph));
+      g.fillStyle = col(cur.fx, a); g.fillRect(p.x | 0, p.y | 0, boss ? 1 : 2, boss ? 2 : 2);
+    });
+  }
+  return { start(){
+    cv = document.getElementById('bg'); if(!cv) return;
+    cv.width = W; cv.height = H; g = cv.getContext('2d');
+    requestAnimationFrame(frame);
+  } };
+})();
 let clockLast = performance.now();
 function paintClock(){ const el = $('#hTime'); if(el && G) el.textContent = '⏱ ' + fmtTime(G.ms || 0); }
 function tickClock(){
@@ -1588,6 +1670,7 @@ const CONFIRM_RETRY = '<h2>Start over?</h2><p>Your current run will be lost.</p>
 const CONFIRM_HOME = '<h2>Back to the main menu?</h2><p>Your current run will be lost.</p><div class="mbtns"><button type="button" class="btn warn" data-act="menu">Main menu</button><button type="button" class="btn" data-act="close">Cancel</button></div>';
 
 function init(){
+  BG.start();
   $('#logo').innerHTML = icon('holz') + icon('stein') + icon('eisen') + icon('gold') + icon('diamant');
   updateRecord(); paintDiff(); setInterval(tickClock, 250);
   document.querySelectorAll('[data-diff]').forEach(b => b.addEventListener('click', () => { diff = b.dataset.diff; store.set('blockpoker.diff', diff); paintDiff(); updateRecord(); }));
@@ -1599,16 +1682,15 @@ function init(){
   document.addEventListener('click', e => { const b = e.target.closest('[data-tut]'); if(b) tutClick(b.dataset.tut); });
   $('#bHelpTitle').addEventListener('click', () => openModal(helpHtml(), true));
   $('#bColTitle').addEventListener('click', () => openCollection('all'));
-  $('#bSound').addEventListener('click', () => { muted = !muted; store.set('blockpoker.muted', muted ? '1' : ''); music.sync(); if(G) renderHud(); });
-  $('#bMusic').addEventListener('click', () => music.cycle());
-  $('#bMusicT').addEventListener('click', () => music.cycle());
-  renderMusicBtn();
-  $('#bMenu').addEventListener('click', () => openModal('<button type="button" class="btn mclose" data-act="close" title="Close" aria-label="Close">✕</button><h2>Menu</h2><div class="menulist">' +
+  paintSoundBtns();
+  const openMenu = () => openModal('<button type="button" class="btn mclose" data-act="close" title="Close" aria-label="Close">✕</button><h2>Menu</h2><div class="menulist">' +
     '<button type="button" class="btn" data-act="mhelp">❓ How to play</button>' +
     '<button type="button" class="btn" data-act="mrec">📋 Recipes</button>' +
     '<button type="button" class="btn" data-act="mcol">🃏 Collection</button>' +
     '<button type="button" class="btn warn" data-act="mretry">↺ Retry</button>' +
-    '<button type="button" class="btn warn" data-act="mhome">🏠 Main menu</button></div>', false));
+    '<button type="button" class="btn warn" data-act="mhome">🏠 Main menu</button></div>', false);
+  document.addEventListener('click', e => { const b = e.target.closest('#bSound,#bSoundT,#bMenu'); if(!b) return; if(b.id === 'bMenu') openMenu(); else openSound(); });
+  document.addEventListener('input', e => { const r = e.target.closest('[data-vol]'); if(r) setVol(r.dataset.vol, parseInt(r.value, 10)); });
   $('#bPlay').addEventListener('click', playSelected);
   $('#bDiscard').addEventListener('click', discardSelected);
   $('#bSortVal').addEventListener('click', () => { if(G && G.phase === 'play'){ G.sort = 'val'; sortHand(); render(); } });
@@ -1705,7 +1787,7 @@ function init(){
   });
   document.addEventListener('click', e => { const i = e.target.closest('[data-info]'); if(i) toast(i.dataset.info, 3800); });
   document.addEventListener('pointerdown', () => { if(G && G.phase === 'anim') G.fast = true; });
-  const kick = () => { if(music.level > 0 && !music.eng) music.start(); else if(ac && ac.state === 'suspended') ac.resume(); };
+  const kick = () => { if(vols.music > 0 && !music.eng) music.start(); else if(ac && ac.state === 'suspended') ac.resume(); };
   document.addEventListener('pointerdown', kick); document.addEventListener('keydown', kick);
   document.addEventListener('visibilitychange', () => { if(!ac) return; if(document.hidden) ac.suspend(); else ac.resume(); });
   document.addEventListener('keydown', e => {
@@ -1728,7 +1810,7 @@ function init(){
 window.BP = {
   get G(){ return G; }, evaluate, scoreHand, HANDS, JOKERS, ROUNDS, MATS, makeDeck, handStats, makeJoker, rarityOf,
   newRun, startRound, toggleCard, price, maxJokers, handSize, rerollPrice, bookPrice, packPrice, choosePack, PACKS, SWORD_HANDS, BOSSES, bossFor, resumeShop, sellValue, BOOKS, moveJoker, playSelected, discardSelected, enterShop, buy, reroll, nextRound, sellJoker,
-  get found(){ return found; }, music, createMusic, setRng(f){ rng = f; }, seed(n){ rng = mulberry32(n); }
+  get found(){ return found; }, music, vols, createMusic, setRng(f){ rng = f; }, seed(n){ rng = mulberry32(n); }
 };
 
 init();
