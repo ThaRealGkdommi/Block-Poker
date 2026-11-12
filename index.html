@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Block Poker</title>
-<meta name="game-version" content="2026-11-11.4">
+<meta name="game-version" content="2026-11-12.3">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%231d140e%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22%23ffc61a%22/%3E%3Cpath d=%22M4 9.5 16 16V29L4 22.5Z%22 fill=%22%23b9784a%22/%3E%3Cpath d=%22M28 9.5 16 16V29L28 22.5Z%22 fill=%22%237a4a2a%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221%22/%3E%3Cpath d=%22M4 9.5 16 16 28 9.5M16 16V29M4 9.5V22.5L16 29 28 22.5V9.5L16 3Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2213%22 y=%228%22 width=%226%22 height=%223%22 fill=%22%23fff3a8%22/%3E%3Crect x=%228%22 y=%2217%22 width=%224%22 height=%224%22 fill=%22%232ecc71%22/%3E%3Crect x=%2220%22 y=%2218%22 width=%224%22 height=%224%22 fill=%22%234ad0ff%22/%3E%3C/svg%3E">
 <style>
   :root{
@@ -216,6 +216,7 @@
   .coach .cs{margin-left:auto}
   .card.tuthi:not(.sel){outline:4px solid var(--gold);outline-offset:2px;animation:tutpulse 1s infinite alternate}
   @keyframes tutpulse{from{box-shadow:0 0 0 0 rgba(255,207,74,0)}to{box-shadow:0 0 14px 4px rgba(255,207,74,.8)}}
+  .btn.hint{animation:tutpulse 1s infinite alternate;outline:3px solid var(--gold);outline-offset:2px}
   .diffsel{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin:14px 0 4px}
   .diffinfo{margin:0 0 10px;text-align:center;min-height:1.4em}
   .statrow{display:flex;flex-wrap:wrap;gap:4px 10px;justify-content:space-between;align-items:center;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--line)}
@@ -517,7 +518,7 @@ const JOKERS = [
   {id:'kuerbis', tag:'mult', emoji:'🎃', name:'Pumpkin', cost:5, desc:'+15 Mult if you play exactly 3 cards.', onHand:c=>c.cards.length===3?{mult:15}:null},
 
   /* --- retrigger jokers: a card scores again, and every card joker fires again with it --- */
-  {id:'parrot', tag:'retrigger', emoji:'🦜', name:'Parrot', cost:6, desc:'Retriggers the first scoring card.', retrigger:(k,c,i)=>i===0?1:0},
+  {id:'parrot', tag:'retrigger', emoji:'🦜', name:'Parrot', cost:6, desc:'Retriggers the first scoring card twice.', retrigger:(k,c,i)=>i===0?2:0},
   {id:'mirror', tag:'retrigger', emoji:'🪞', name:'Mirror Pond', cost:5, desc:'Retriggers the last scoring card.', retrigger:(k,c,i,n)=>i===n-1?1:0},
   {id:'echobat', tag:'retrigger', emoji:'🦇', name:'Echo Bat', cost:5, desc:'Retriggers every scoring Stone card.', retrigger:k=>k.mat==='stein'?1:0},
   {id:'forgebell', tag:'retrigger', emoji:'🔔', name:'Forge Bell', cost:5, desc:'Retriggers every scoring Iron card.', retrigger:k=>k.mat==='eisen'?1:0},
@@ -550,6 +551,10 @@ const JOKERS = [
     onRoundWin:j=>{ j.n++; if(j.n % 2 === 0){ const k = mostCrafted(); G.handLevels[k]++; return 'Archivist: ' + BOOKS[k] + '. ' + HANDS[k].name + ' is now level ' + G.handLevels[k] + '.'; } }},
   {id:'bookmark', tag:'utility', emoji:'🔖', name:'Bookmark', cost:6, desc:'Every bundle in the Market has 1 extra choice.', packOptions:1},
   {id:'bookbinder', tag:'economy', emoji:'🧵', name:'Bookbinder', cost:5, desc:'Bundles cost 1 less (minimum 1).', bookDiscount:1},
+  {id:'goldrush', tag:'economy', emoji:'💰', name:'Gold Rush', cost:5, desc:'+1 emerald for every Gold card that scores.', onCard:k=>k.mat==='gold'?{money:1}:null},
+  {id:'vault', tag:'economy', emoji:'🏦', name:'Vault Keeper', cost:5, desc:'+1 emerald for every Diamond still in your hand when you craft.',
+    onHand:c=>{ const n = c.heldCards.filter(k => k.mat === 'diamant').length; return n ? {money:n} : null; }},
+  {id:'recycler', tag:'economy', emoji:'🔄', name:'Recycler', cost:4, desc:'After every hand you play or discard, your weakest card in hand is scrapped for good (max 18 per run) and you gain 1 emerald.', scrapper:true},
   {id:'scrapyard', tag:'economy', emoji:'♻️', name:'Scrapyard', cost:4, desc:'+1 emerald every time you discard.', onDiscard:()=>{ G.money += 1; }},
   {id:'haggler', tag:'economy', emoji:'🤝', name:'Haggler', cost:4, desc:'Rerolls start at 1 emerald instead of 2.', rerollDiscount:1},
   {id:'landlord', tag:'economy', emoji:'🏠', name:'Landlord', cost:6, desc:'+1 emerald at the end of a round for every joker you own (itself included).', endMoneyFn:g=>g.jokers.length},
@@ -625,7 +630,7 @@ function markFound(id){
 function makeDeck(){
   const d = []; let id = 0;
   MAT_ORDER.forEach(m => { for(let k=0;k<COPIES[m];k++) d.push({id:id++, mat:m, chips:MATS[m].chips}); });
-  return d;
+  return G && G.scrapped ? d.filter(c => G.scrapped.indexOf(c.id) === -1) : d;
 }
 
 function newRun(d){
@@ -638,7 +643,7 @@ function newRun(d){
     draw:[], hand:[], playing:[], selected:new Set(),
     handsLeft:0, handsTotal:0, discardsLeft:0, score:0, shownScore:0, boss:null,
     phase:'play', sort:prevSort, selJoker:null, fast:false,
-    calc:idleCalc(), shopOffers:[], rerollCost:2, rerollsThisShop:0, crafted:{}, bossFight:null, bossDone:{}, pity:0, pendingPick:null, pendingPack:null, popJ:null,
+    calc:idleCalc(), shopOffers:[], rerollCost:2, rerollsThisShop:0, crafted:{}, bossFight:null, bossDone:{}, pity:0, pendingPick:null, pendingPack:null, popJ:null, scrapped:[],
     diff:d, ms:0, clock:true
   };
   startRound(0);
@@ -723,16 +728,16 @@ function scoreHand(cards){
   let chips = st.chips, mult = st.mult;
   const steps = [{kind:'base', chips:chips, mult:mult}];
   const debuff = G.boss && G.boss.debuff;
-  const held = G.hand.filter(c => cards.indexOf(c) === -1).length;
+  const heldCards = G.hand.filter(c => cards.indexOf(c) === -1), held = heldCards.length;
   const bookLevels = HAND_ORDER.reduce((s, k) => s + (G.handLevels[k] - 1), 0);
   const ctx = {type:ev.type, cards:cards, scoring:ev.scoring, handsLeft:G.handsLeft, discardsLeft:G.discardsLeft, hasPair:ev.hasPair,
-    held:held, bookLevels:bookLevels, firstHand:(G.handsTotal - G.handsLeft) === 1, handNo:(G.handsTotal - G.handsLeft), roundNo:G.roundIdx + 1};
+    held:held, heldCards:heldCards, bookLevels:bookLevels, firstHand:(G.handsTotal - G.handsLeft) === 1, handNo:(G.handsTotal - G.handsLeft), roundNo:G.roundIdx + 1};
 
   function apply(e, jokerIdx, cardId){
     if(Array.isArray(e)){ e.forEach(x => apply(x, jokerIdx, cardId)); return; }
     const s = {kind:'joker', jokerIdx:jokerIdx, cardId:cardId, dChips:0, dMult:0, xMult:1};
     if(e.note) s.note = e.note;
-    if(e.money) s.dMoney = e.money;
+    if(e.money){ s.dMoney = e.money; if(!e.note) s.note = '+' + e.money + ' 💎'; }
     if(e.levelUp) s.levelUp = true;
     if(e.chips){ chips += e.chips; s.dChips = e.chips; }
     if(e.mult){ mult += e.mult; s.dMult = e.mult; }
@@ -1043,7 +1048,8 @@ function renderShop(){
       hb += '<div class="book r-' + (o.type === 'grand' ? 'grand' : 'book') + '" title="' + d.note + (o.options.length !== d.n ? ' (+' + (o.options.length - d.n) + ' extra)' : '') + '"><div class="be">' + d.emoji + '</div>' +
         '<div class="bt"><b>' + d.name + '</b><span class="ot">Pick 1 of ' + o.options.length + '</span>' +
         '<span class="bd">' + (o.type === 'sword' ? 'Sword books only' : 'Recipe books') + ' · +' + o.levels + ' level</span></div>' +
-        '<button type="button" class="btn gold small' + (G.money < pc ? ' poor' : '') + '" data-buy="' + i + '">View · ' + pc + '</button></div>';
+        (o.paid ? '<button type="button" class="btn go small" data-buy="' + i + '">Choose</button></div>'
+          : '<button type="button" class="btn gold small' + (G.money < pc ? ' poor' : '') + '" data-buy="' + i + '">Open · ' + pc + '</button></div>');
     }
   });
   const bs = bossFor(G.roundIdx), bst = bs ? G.bossDone[bs.id] : null;
@@ -1141,6 +1147,15 @@ function toggleCard(id){
   render();
 }
 
+// Recycler: after a play or discard the weakest card in hand is destroyed for the rest of the run (+1 emerald)
+function scrapAfter(){
+  G.jokers.forEach(j => {
+    if(!j.scrapper || !G.hand.length || G.scrapped.length >= 18) return;
+    let w = G.hand[0]; G.hand.forEach(c => { if(c.chips < w.chips) w = c; });
+    G.hand = G.hand.filter(c => c !== w); G.scrapped.push(w.id); G.money += 1;
+    toast('Recycler scrapped a ' + MATS[w.mat].name + ' (+1 emerald)', 1500);
+  });
+}
 function discardSelected(){
   if(G && G.tut && G.tut.step < 4){ toast('Discarding comes later. Follow the tip first.'); return; }
   if(!G || G.phase !== 'play') return;
@@ -1151,6 +1166,7 @@ function discardSelected(){
   G.selected = new Set();
   G.discardsLeft--;
   G.jokers.forEach(j => { if(j.onDiscard) j.onDiscard(j, tossed); });
+  scrapAfter();
   drawUp();
   tone(300, .08, 'square', .04);
   render();
@@ -1234,6 +1250,7 @@ async function playSelected(){
   G.shownScore = G.score; updateScoreUi(G.score);
   await wait(450); if(G !== run) return;
   G.playing = [];
+  scrapAfter();
   drawUp();
   G.calc = idleCalc();
   afterPlay();
@@ -1417,28 +1434,29 @@ function buy(i){
     if(rr === 'legendary'){ sfx.legend(); toast('★ Legendary joker acquired: ' + j.name + '!', 2600); render(); return; }
     if(rr === 'rare'){ G.popJ = G.jokers.length - 1; sfx.rare(); toast('Rare joker acquired: ' + j.name + '!', 2200); render(); G.popJ = null; return; }
   } else {
-    const pc = packPrice(o);
-    if(G.money < pc){ toast('Not enough emeralds.'); sfx.bad(); return; }
-    G.pendingPack = i; sfx.pick(); openModal(packHtml(o), true, o.options.length > 3);
+    if(!o.paid){   // opening costs the emeralds; the pick afterwards is free
+      const pc = packPrice(o);
+      if(G.money < pc){ toast('Not enough emeralds.'); sfx.bad(); return; }
+      G.money -= pc; o.paid = true; sfx.buy(); render();
+    } else sfx.pick();
+    G.pendingPack = i; openModal(packHtml(o), true, o.options.length > 3);
     return;
   }
   sfx.buy(); render();
 }
 function packHtml(o){
-  const d = PACKS[o.type], pc = packPrice(o);
-  return '<h2>' + d.emoji + ' ' + d.name + ' ' + infoBtn('Pick 1 book. It costs ' + pc + ' emeralds and you only pay when you choose. Each book raises its recipe by ' + o.levels + ' level.') + '</h2>' +
+  const d = PACKS[o.type];
+  return '<h2>' + d.emoji + ' ' + d.name + ' ' + infoBtn('Pick 1 book, it is free now. Each book raises its recipe by ' + o.levels + ' level. You can close this and choose later, as long as you stay in the Market.') + '</h2>' +
     '<div class="picks">' + o.options.map(h => {
       const hd = HANDS[h], lv = G.handLevels[h], a = handStats(h, lv), n = handStats(h, lv + o.levels);
       return '<button type="button" class="offer pick r-book" data-packpick="' + h + '"><div class="oe">📖</div><b>' + BOOKS[h] + '</b><div class="ot">' + hd.name + '</div>' +
         '<div class="od">Lv.' + lv + ' → ' + (lv + o.levels) + '<br>' + a.chips + '×' + a.mult + ' → ' + n.chips + '×' + n.mult + '</div></button>';
-    }).join('') + '</div><div class="mbtns"><button type="button" class="btn" data-act="close">Cancel</button></div>';
+    }).join('') + '</div><div class="mbtns"><button type="button" class="btn" data-act="close">Choose later</button></div>';
 }
 function choosePack(i, hand){
   if(!G || G.phase !== 'shop') return false;
-  const o = G.shopOffers[i]; if(!o || o.kind !== 'pack' || o.sold || o.options.indexOf(hand) === -1) return false;
-  const pc = packPrice(o);
-  if(G.money < pc){ toast('Not enough emeralds.'); sfx.bad(); return false; }
-  G.money -= pc; G.handLevels[hand] += o.levels; o.sold = true; G.pendingPack = null;
+  const o = G.shopOffers[i]; if(!o || o.kind !== 'pack' || o.sold || !o.paid || o.options.indexOf(hand) === -1) return false;
+  G.handLevels[hand] += o.levels; o.sold = true; G.pendingPack = null;
   if(G.tut && G.tut.step === 5) G.tut.step = 6;
   closeModal(); sfx.buy(); toast(BOOKS[hand] + ': ' + HANDS[hand].name + ' is now level ' + G.handLevels[hand] + '.', 2200); render();
   return true;
@@ -1505,7 +1523,7 @@ const TUT = [
   {title:'2 · Base Chips and Mult', text:'That is a <b>Diamond Sword</b>! Every recipe has base <b style="color:var(--chips)">Chips</b> and <b style="color:var(--mult)">Mult</b> (here 60 × 6, see the panel on the left). Each card in it adds its own chips too: Diamond 15, Stick 3. Recipe books raise the base later.', btn:'Next'},
   {title:'3 · Craft it', text:'Score = <b style="color:var(--chips)">Chips</b> × <b style="color:var(--mult)">Mult</b>. Press <b>Craft</b> to play the cards and score them.'},
   {title:'4 · The Market', text:'Spend emeralds on <b>Jokers</b> (top row). They score from left to right and boost every hand. Every 5 emeralds you keep earn 1 interest, and ↻ rerolls the offers.', btn:'Next'},
-  {title:'5 · Bundles', text:'The bottom row holds <b>bundles</b>. Press <b>View</b>, then pick 1 of the recipe books inside: it raises that recipe by a level (more Chips and Mult). Try the Recipe Pack!', btn:'Next'},
+  {title:'5 · Bundles', text:'The bottom row holds <b>bundles</b>. Press <b>Open</b> (it costs emeralds), then pick 1 of the recipe books inside: it raises that recipe by a level (more Chips and Mult). Try the Recipe Pack!', btn:'Next'},
   {title:'You are ready!', text:'Press the <b>Round 2</b> button when you are done shopping. 📋 lists all recipes and 🃏 all jokers. Good luck!', btn:'Finish'}
 ];
 let coachEl = null, coachKey = null;
@@ -1573,7 +1591,8 @@ function init(){
   $('#logo').innerHTML = icon('holz') + icon('stein') + icon('eisen') + icon('gold') + icon('diamant');
   updateRecord(); paintDiff(); setInterval(tickClock, 250);
   document.querySelectorAll('[data-diff]').forEach(b => b.addEventListener('click', () => { diff = b.dataset.diff; store.set('blockpoker.diff', diff); paintDiff(); updateRecord(); }));
-  $('#bStart').addEventListener('click', () => { if(store.get(TUT_KEY) || (TEST && !params.has('tut'))) newRun(diff); else startTutorial(); });
+  $('#bStart').addEventListener('click', () => newRun(diff));
+  if(!store.get(TUT_KEY)) $('#bTutorial').classList.add('hint');   // new players: the Tutorial button pulses, Start never forces it
   $('#bTutorial').addEventListener('click', () => startTutorial());
   $('#bVersions').hidden = !window.BP_LAUNCHER;
   $('#bVersions').addEventListener('click', () => location.reload());
@@ -1643,7 +1662,11 @@ function init(){
     if(b){ buy(parseInt(b.dataset.buy, 10)); return; }
     if(e.target.closest('#bBoss')){ const bb = bossFor(G.roundIdx); if(bb && !G.bossDone[bb.id]) openModal(bossConfirmHtml(bb), true); return; }
     if(e.target.closest('#bReroll')) reroll();
-    else if(e.target.closest('#bNext')) nextRound();
+    else if(e.target.closest('#bNext')){
+      if(G && G.phase === 'shop' && G.shopOffers.some(o => o.kind === 'pack' && o.paid && !o.sold))
+        openModal('<h2>Leave the Market?</h2><p>You opened a pack but have not picked a book yet. It is lost if you leave.</p><div class="mbtns"><button type="button" class="btn warn" data-act="leave">Leave anyway</button><button type="button" class="btn go" data-act="close">Stay</button></div>', true);
+      else nextRound();
+    }
   });
   $('#modal').addEventListener('click', e => {
     const col = e.target.closest('[data-col]');
@@ -1669,6 +1692,7 @@ function init(){
       else if(act === 'fight'){ const bb = BOSSES.find(x => x.id === a.dataset.boss); if(bb && G && G.phase === 'shop' && !G.bossDone[bb.id]){ closeModal(); startRound(G.roundIdx, bb); } else closeModal(); }
       else if(act === 'newrun'){ closeModal(); newRun(); }
       else if(act === 'menu'){ closeModal(); toMenu(); }
+      else if(act === 'leave'){ closeModal(); nextRound(); }
       else if(act === 'mhelp') openModal(helpHtml(), true);
       else if(act === 'mrec') openModal(recipesHtml(), true);
       else if(act === 'mcol') openCollection('all');
