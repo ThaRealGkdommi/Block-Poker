@@ -37,7 +37,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Block Poker</title>
-<meta name="game-version" content="2026-11-12.5">
+<meta name="game-version" content="2026-11-16.2">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%231d140e%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22%23ffc61a%22/%3E%3Cpath d=%22M4 9.5 16 16V29L4 22.5Z%22 fill=%22%23b9784a%22/%3E%3Cpath d=%22M28 9.5 16 16V29L28 22.5Z%22 fill=%22%237a4a2a%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221%22/%3E%3Cpath d=%22M4 9.5 16 16 28 9.5M16 16V29M4 9.5V22.5L16 29 28 22.5V9.5L16 3Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2213%22 y=%228%22 width=%226%22 height=%223%22 fill=%22%23fff3a8%22/%3E%3Crect x=%228%22 y=%2217%22 width=%224%22 height=%224%22 fill=%22%232ecc71%22/%3E%3Crect x=%2220%22 y=%2218%22 width=%224%22 height=%224%22 fill=%22%234ad0ff%22/%3E%3C/svg%3E">
 <style>
   :root{
@@ -171,7 +171,7 @@
   .picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0 4px}
   .pick{font:inherit;color:inherit;cursor:pointer;text-align:center}
   .pick:hover,.pick:focus-visible{transform:translateY(-2px);outline:3px solid var(--gold)}
-  @media (prefers-reduced-motion:reduce){.offer.r-legendary,.offer.r-legendary::after,.jslot.pop,body.flash::after{animation:none}}
+  @media (prefers-reduced-motion:reduce){.offer.r-legendary,.offer.r-legendary::after,.jslot.pop,body.flash::after,.statrow .money.gain{animation:none}}
   .offer.r-legendary,.jtile.r-legendary{box-shadow:inset 0 0 0 3px var(--line),0 0 12px rgba(255,198,26,.38)}
   .jslot.r-legendary:not(.sel):not(.dragging){box-shadow:inset 0 0 0 3px var(--line),0 0 10px rgba(255,198,26,.45)}
   .jtile.r-legendary .jt-badge{background:linear-gradient(135deg,#fff3a8,#ffc61a 55%,#c98a00)}
@@ -202,7 +202,10 @@
   .score{animation:pop .35s}
   @keyframes pop{50%{transform:translateY(-12px) scale(1.12)}}
   .float{position:absolute;left:50%;top:-6px;transform:translateX(-50%);font-weight:900;font-size:15px;padding:2px 6px;border:2px solid var(--edge);pointer-events:none;white-space:nowrap;z-index:6;animation:floatUp .9s ease-out forwards;color:#fff}
-  .float.c{background:#2c63b8}.float.m{background:#b8362d}.float.x{background:#8a3fd0}.float.d{background:#555}
+  .float.c{background:#2c63b8}.float.m{background:#b8362d}.float.x{background:#8a3fd0}.float.d{background:#555}.float.e{background:#1f9a55}
+  .statrow .money{position:relative}
+  .statrow .money.gain{animation:gain .55s ease-out}
+  @keyframes gain{0%{transform:scale(1.5);text-shadow:0 0 12px #4dff9a,0 0 4px #fff;filter:brightness(1.8)}100%{transform:scale(1);text-shadow:none;filter:none}}
   @keyframes floatUp{0%{opacity:0;margin-top:10px}15%{opacity:1}100%{opacity:0;margin-top:-38px}}
 
   /* ---------- Workbench ---------- */
@@ -608,10 +611,11 @@ const JOKERS = [
 ];
 /* Names of the recipe books (one per recipe) */
 const SWORD_HANDS = ['holzsword','steinsword','eisensword','goldsword','diamantsword'];
+const PLAIN_HANDS = HAND_ORDER.filter(h => SWORD_HANDS.indexOf(h) < 0);   // recipe packs never hold swords
 const PACKS = {
-  small:{name:'Recipe Pack', emoji:'📘', n:3, cost:4, chance:1,   note:'Pick 1 of 3 recipe books'},
-  grand:{name:'Grand Pack',  emoji:'📕', n:5, cost:7, chance:.35, note:'Pick 1 of 5 recipe books'},
-  sword:{name:'Sword Pack',  emoji:'🗡️', n:3, cost:4, chance:.30, note:'Pick 1 of 3 sword books', pool:SWORD_HANDS}
+  small:{name:'Recipe Pack', emoji:'📘', n:3, cost:2, chance:1,   note:'Pick 1 of 3 recipe books', pool:PLAIN_HANDS},
+  grand:{name:'Grand Pack',  emoji:'📕', n:5, cost:4, chance:.35, levels:2, note:'Pick 1 of 5 recipe books, +2 levels', pool:PLAIN_HANDS},
+  sword:{name:'Sword Pack',  emoji:'🗡️', n:5, cost:4, chance:.30, note:'Pick 1 of 5 sword books', pool:SWORD_HANDS}
 };
 const BOOKS = {
   high:"Scavenger's Notes", pair:"Stacker's Guide", twopair:"Twin-Stack Ledger", three:"Smelter's Handbook",
@@ -642,7 +646,7 @@ const ROUNDS = [
 const BOSSES = [
   {id:'bone',   after:1, title:'Bone Lord',          name:'Boss: Bone Lord',          emoji:'💀', target:5000, reward:0,
     boss:{debuff:'stein', text:'Stone is weakened: Stone cards score no chips and trigger no jokers.'},
-    prize:'+10 emeralds and +2 levels for your most-crafted recipe.'},
+    prize:'+10 emeralds and +2 levels for the recipe that beat the boss.'},
   {id:'golem',  after:3, title:'Lava Golem',         name:'Boss: Lava Golem',         emoji:'🌋', target:11500, reward:0,
     boss:{debuff:'eisen', text:'Iron is weakened: Iron cards score no chips and trigger no jokers.'},
     prize:'Choose 1 of 3 Legendary jokers for free (you need a free joker slot, otherwise you get +15 emeralds, so sell one first if you want it).'},
@@ -669,6 +673,7 @@ function makeDeck(){
 }
 
 function newRun(d){
+  shownMoney = null;
   d = DIFFS[d] ? d : (G && G.diff) || diff;
   applyDifficulty(d);
   const lv = {}; HAND_ORDER.forEach(k => { lv[k] = 1; });
@@ -823,8 +828,22 @@ function tone(freq, dur, type, vol){
     o.start(t); o.stop(t + dur + 0.02);
   }catch(e){}
 }
+function hiss(dur, vol){   // short filtered noise burst, the "kssh" of coins
+  if(!vols.sfx || TEST) return;
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if(ac.state === 'suspended') ac.resume();
+    const t = ac.currentTime, n = Math.max(1, Math.floor(ac.sampleRate * dur)), buf = ac.createBuffer(1, n, ac.sampleRate), d = buf.getChannelData(0);
+    for(let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const s = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    s.buffer = buf; f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(7000, t); f.frequency.exponentialRampToValueAtTime(2500, t + dur);
+    g.gain.setValueAtTime((vol || .1) * vols.sfx / 80, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s.connect(f); f.connect(g); g.connect(ac.destination); s.start(t);
+  }catch(e){}
+}
 const sfx = {
   pick(){ tone(440, .05); },
+  coin(){ hiss(.16, .12); tone(1040, .07, 'square', .03); },
   step(i){ tone(380 + Math.min(i, 14)*55, .09, 'square', .045); },
   jok(){ tone(760, .12, 'triangle', .06); },
   again(){ tone(980, .1, 'triangle', .06); },
@@ -977,8 +996,15 @@ function render(){
 function renderHud(){
   $('#hRound').textContent = (G.bossFight ? '⚔ Boss challenge' : 'Round ' + (G.roundIdx + 1) + '/' + ROUNDS.length) + (G.diff !== 'normal' ? ' · ' + DIFFS[G.diff].name : '');
   paintClock();
-  $('#hMoney').innerHTML = icon('smaragd') + '<span>' + G.money + '</span>';
-  $('#hMoney').setAttribute('aria-label', G.money + ' emeralds');
+  paintMoney();
+}
+let shownMoney = null;
+function paintMoney(){   // emerald counter; pops and floats +N whenever the amount goes up
+  const el = $('#hMoney'); if(!el || !G) return;
+  el.innerHTML = icon('smaragd') + '<span>' + G.money + '</span>';
+  el.setAttribute('aria-label', G.money + ' emeralds');
+  if(shownMoney !== null && G.money > shownMoney){ popEl(el); el.classList.remove('gain'); void el.offsetWidth; el.classList.add('gain'); floatText(el, '+' + (G.money - shownMoney), 'e'); sfx.coin(); }
+  shownMoney = G.money;
 }
 
 function renderSide(){
@@ -1089,7 +1115,7 @@ function renderShop(){
       const d = PACKS[o.type], pc = packPrice(o);
       hb += '<div class="book r-' + (o.type === 'grand' ? 'grand' : 'book') + '" title="' + d.note + (o.options.length !== d.n ? ' (+' + (o.options.length - d.n) + ' extra)' : '') + '"><div class="be">' + d.emoji + '</div>' +
         '<div class="bt"><b>' + d.name + '</b><span class="ot">Pick 1 of ' + o.options.length + '</span>' +
-        '<span class="bd">' + (o.type === 'sword' ? 'Sword books only' : 'Recipe books') + ' · +' + o.levels + ' level</span></div>' +
+        '<span class="bd">' + (o.type === 'sword' ? 'Sword books only' : 'Recipe books') + ' · +' + o.levels + (o.levels > 1 ? ' levels' : ' level') + '</span></div>' +
         (o.paid ? '<button type="button" class="btn go small" data-buy="' + i + '">Choose</button></div>'
           : '<button type="button" class="btn gold small' + (G.money < pc ? ' poor' : '') + '" data-buy="' + i + '">Open · ' + pc + '</button></div>');
     }
@@ -1137,7 +1163,7 @@ function helpHtml(){
     '<li>In the <b>Market</b> you buy Jokers (up to 5) and recipe books. Every 5 emeralds you hold earn 1 interest.</li>' +
     '<li>After rounds 2, 4 and 6 the Market offers an <b>optional Boss challenge</b>: an extra round with a special rule and a big prize. If you fail you only lose half your emeralds.</li>' +
     '<li>The longer the Market shows no <b>Rare</b> or <b>Legendary</b> joker, the more likely one appears. Later rounds also favour them.</li>' +
-    '<li><b>Recipe books</b> raise a recipe by a level. You find them in the Market inside <b>bundles</b>: open one and pick 1 of 3 or 5 books (a Recipe Pack is always there, a Grand Pack and a Sword Pack show up sometimes). Boss prizes and a few jokers give levels too.</li>' +
+    '<li><b>Recipe books</b> raise a recipe by a level. You find them in the Market inside <b>bundles</b>: open one and pick 1 of 3 or 5 books (a Recipe Pack is always there, a Grand Pack, worth +2 levels, and a Sword Pack, the only source of sword books, show up sometimes). If you open a pack and leave without picking, you get 1 emerald back. Boss prizes and a few jokers give levels too.</li>' +
     '<li>The 🔊 button opens the sound menu with separate music and effects volume.</li>' +
     '<li>Tap the little <b>i</b> icons for extra info (rewards, keyboard shortcuts, joker tips).</li>' +
     '<li>Jokers score <b>from left to right</b>. Drag them with the mouse or finger (or use ◀ ▶) to change the order. A ×Mult joker is strongest at the far right.</li>' +
@@ -1251,7 +1277,7 @@ async function playSelected(){
   G.crafted[res.type] = (G.crafted[res.type] || 0) + 1;
   G.calc = {name:res.name, emoji:res.emoji, type:res.type, chips:res.steps[0].chips, mult:res.steps[0].mult, total:null};
   render();
-  const pace = Math.max(0.45, Math.min(1, 16 / res.steps.length));
+  const gap = Math.max(200, Math.min(500, 500 - (res.steps.length - 2) * 30));   // few actions: 0.5 s apart, many: down to 0.2 s
   await wait(350); if(G !== run) return;
   for(let i = 1; i < res.steps.length; i++){
     const s = res.steps[i];
@@ -1269,7 +1295,7 @@ async function playSelected(){
     } else {
       const el = $('#jokerbar [data-j="' + s.jokerIdx + '"]');
       popEl(el);
-      if(s.dMoney) G.money += s.dMoney;
+      if(s.dMoney){ G.money += s.dMoney; paintMoney(); }
       if(s.levelUp) G.handLevels[res.type]++;
       if(s.note && !s.dChips && !s.dMult && s.xMult === 1) floatText(el, s.note, s.note === 'Miss' ? 'd' : 'x');
       else if(s.dChips){ floatText(el, '+' + s.dChips + ' Chips', 'c'); bumpEl($('#cChips')); }
@@ -1277,12 +1303,13 @@ async function playSelected(){
       else if(s.xMult !== 1){ floatText(el, '×' + fmt(s.xMult), 'x'); bumpEl($('#cMult')); }
       sfx.jok();
     }
-    await wait((s.kind === 'card' ? 380 : 480) * pace); if(G !== run) return;
+    await wait(gap); if(G !== run) return;
   }
   G.calc.total = res.total; paintCalc();
   await wait(450); if(G !== run) return;
   const from = G.score; G.score += res.total;
-  const pm = bonus('playMoney'); if(pm) G.money += pm;
+  if(G.score >= curRound().target) G.winHand = res.type;   // the hand that beats the round (Bone prize)
+  const pm = bonus('playMoney'); if(pm){ G.money += pm; paintMoney(); }
   G.jokers.forEach(j => { if(j.onPlayed){ const m = j.onPlayed(res.type, G.score >= curRound().target); if(m) toast(m); } });
   for(let k = 1; k <= 12; k++){
     G.shownScore = from + (G.score - from) * k / 12;
@@ -1333,7 +1360,7 @@ function roundWon(){
     if(v > 0) lines.push([j.name, v]);
   });
   const total = lines.reduce((s, l) => s + l[1], 0);
-  G.money += total;
+  if(TEST) G.money += total; else G.pendingMoney = total;   // real play: paid out on entering the Market, so the gain is seen
   sfx.win();
   render();
   openModal('<h2>Round cleared!</h2><p>' + num(G.score) + ' of ' + num(r.target) + ' points.</p>' + tutHtml + '<ul class="lines">' +
@@ -1381,7 +1408,7 @@ function bossConfirmHtml(b){
 function applyPrize(b){
   const out = [];
   if(b.id === 'bone'){
-    G.money += 10; const k = mostCrafted(); G.handLevels[k] += 2;
+    G.money += 10; const k = G.winHand || mostCrafted(); G.handLevels[k] += 2;
     out.push('+10 emeralds'); out.push(BOOKS[k] + ': ' + HANDS[k].name + ' is now level ' + G.handLevels[k]);
   } else if(b.id === 'golem'){
     const pool = shuffle(JOKERS.filter(j => j.cost >= 7 && !G.jokers.some(o => o.id === j.id)));
@@ -1446,7 +1473,7 @@ function genOffers(){
     const d = PACKS[t];
     if(t !== 'small' && rng() >= d.chance) return;
     const n = Math.min((d.pool || HAND_ORDER).length, d.n + bonus('packOptions'));
-    offers.push({kind:'pack', type:t, cost:d.cost, levels:1, options:shuffle((d.pool || HAND_ORDER).slice()).slice(0, n), sold:false});
+    offers.push({kind:'pack', type:t, cost:d.cost, levels:d.levels || 1, options:shuffle((d.pool || HAND_ORDER).slice()).slice(0, n), sold:false});
   });
   return offers;
 }
@@ -1462,6 +1489,11 @@ function enterShop(){
   if(G.tut) G.tut.step = 4;
   G.shopOffers = genOffers(); G.rerollCost = Math.max(1, 2 - bonus('rerollDiscount')); G.rerollsThisShop = 0;
   render(); announceOffers();
+  if(G.pendingMoney){
+    const g = G, m = G.pendingMoney; G.pendingMoney = 0;
+    const pay = () => { if(G !== g) return; G.money += m; paintMoney(); };
+    if(TEST) pay(); else setTimeout(pay, 450);
+  }
 }
 function buy(i){
   if(!G || G.phase !== 'shop') return;
@@ -1488,7 +1520,7 @@ function buy(i){
 }
 function packHtml(o){
   const d = PACKS[o.type];
-  return '<h2>' + d.emoji + ' ' + d.name + ' ' + infoBtn('Pick 1 book, it is free now. Each book raises its recipe by ' + o.levels + ' level. You can close this and choose later, as long as you stay in the Market.') + '</h2>' +
+  return '<h2>' + d.emoji + ' ' + d.name + ' ' + infoBtn('Pick 1 book, it is free now. Each book raises its recipe by ' + o.levels + (o.levels > 1 ? ' levels.' : ' level.') + ' You can close this and choose later, as long as you stay in the Market. If you leave the Market without picking, the pack is lost but you get 1 emerald back.') + '</h2>' +
     '<div class="picks">' + o.options.map(h => {
       const hd = HANDS[h], lv = G.handLevels[h], a = handStats(h, lv), n = handStats(h, lv + o.levels);
       return '<button type="button" class="offer pick r-book" data-packpick="' + h + '"><div class="oe">📖</div><b>' + BOOKS[h] + '</b><div class="ot">' + hd.name + '</div>' +
@@ -1519,6 +1551,11 @@ function sellJoker(i){
   G.money += sellValue(j);
   G.jokers.splice(i, 1); G.selJoker = null;
   tone(400,.08,'triangle',.05); render();
+}
+function refundPacks(){   // opened but never picked: the pack is lost, 1 emerald comes back per pack
+  if(!G) return;
+  G.shopOffers.forEach(o => { if(o.kind === 'pack' && o.paid && !o.sold){ o.sold = true; G.money += 1; } });
+  G.pendingPack = null;
 }
 function nextRound(){
   if(!G || G.phase !== 'shop') return;
@@ -1777,11 +1814,7 @@ function init(){
     if(b){ buy(parseInt(b.dataset.buy, 10)); return; }
     if(e.target.closest('#bBoss')){ const bb = bossFor(G.roundIdx); if(bb && !G.bossDone[bb.id]) openModal(bossConfirmHtml(bb), true); return; }
     if(e.target.closest('#bReroll')) reroll();
-    else if(e.target.closest('#bNext')){
-      if(G && G.phase === 'shop' && G.shopOffers.some(o => o.kind === 'pack' && o.paid && !o.sold))
-        openModal('<h2>Leave the Market?</h2><p>You opened a pack but have not picked a book yet. It is lost if you leave.</p><div class="mbtns"><button type="button" class="btn warn" data-act="leave">Leave anyway</button><button type="button" class="btn go" data-act="close">Stay</button></div>', true);
-      else nextRound();
-    }
+    else if(e.target.closest('#bNext')){ refundPacks(); nextRound(); }
   });
   $('#modal').addEventListener('click', e => {
     const col = e.target.closest('[data-col]');
@@ -1807,7 +1840,7 @@ function init(){
       else if(act === 'fight'){ const bb = BOSSES.find(x => x.id === a.dataset.boss); if(bb && G && G.phase === 'shop' && !G.bossDone[bb.id]){ closeModal(); startRound(G.roundIdx, bb); } else closeModal(); }
       else if(act === 'newrun'){ closeModal(); newRun(); }
       else if(act === 'menu'){ closeModal(); toMenu(); }
-      else if(act === 'leave'){ closeModal(); nextRound(); }
+      
       else if(act === 'mhelp') openModal(helpHtml(), true);
       else if(act === 'mrec') openModal(recipesHtml(), true);
       else if(act === 'mcol') openCollection('all');
@@ -1842,7 +1875,7 @@ function init(){
 
 window.BP = {
   get G(){ return G; }, evaluate, scoreHand, HANDS, JOKERS, ROUNDS, MATS, makeDeck, handStats, makeJoker, rarityOf,
-  newRun, startRound, toggleCard, price, maxJokers, handSize, rerollPrice, bookPrice, packPrice, choosePack, PACKS, SWORD_HANDS, BOSSES, bossFor, resumeShop, sellValue, BOOKS, moveJoker, playSelected, discardSelected, enterShop, buy, reroll, nextRound, sellJoker,
+  newRun, refundPacks, startRound, toggleCard, price, maxJokers, handSize, rerollPrice, bookPrice, packPrice, choosePack, PACKS, SWORD_HANDS, BOSSES, bossFor, resumeShop, sellValue, BOOKS, moveJoker, playSelected, discardSelected, enterShop, buy, reroll, nextRound, sellJoker,
   get found(){ return found; }, music, vols, createMusic, setRng(f){ rng = f; }, seed(n){ rng = mulberry32(n); }
 };
 
