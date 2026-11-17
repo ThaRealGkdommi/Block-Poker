@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Block Poker</title>
-<meta name="game-version" content="2026-11-16.2">
+<meta name="game-version" content="2026-11-17.3">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%231d140e%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22%23ffc61a%22/%3E%3Cpath d=%22M4 9.5 16 16V29L4 22.5Z%22 fill=%22%23b9784a%22/%3E%3Cpath d=%22M28 9.5 16 16V29L28 22.5Z%22 fill=%22%237a4a2a%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221%22/%3E%3Cpath d=%22M4 9.5 16 16 28 9.5M16 16V29M4 9.5V22.5L16 29 28 22.5V9.5L16 3Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2213%22 y=%228%22 width=%226%22 height=%223%22 fill=%22%23fff3a8%22/%3E%3Crect x=%228%22 y=%2217%22 width=%224%22 height=%224%22 fill=%22%232ecc71%22/%3E%3Crect x=%2220%22 y=%2218%22 width=%224%22 height=%224%22 fill=%22%234ad0ff%22/%3E%3C/svg%3E">
 <style>
   :root{
@@ -543,11 +543,11 @@ const JOKERS = [
   {id:'alchemist', tag:'xmult', emoji:'⚗️', name:'Alchemist', cost:6, desc:'×1.25 Mult for every different material you play.',
     onHand:c=>({xmult:Math.pow(1.25, new Set(c.cards.map(k=>k.mat)).size)})},
   {id:'moon', tag:'mult', emoji:'🌙', name:'Moon Phase', cost:5, desc:'Odd rounds: +30 Chips. Even rounds: ×1.5 Mult.', onHand:c=>(c.roundNo%2===1)?{chips:30}:{xmult:1.5}},
-  {id:'idol', tag:'xmult', emoji:'🗿', name:'Cursed Idol', cost:6, desc:'×3 Mult on every hand, but you get 1 less discard each round.', discards:-1, onHand:()=>({xmult:3})},
+  {id:'idol', tag:'xmult', emoji:'🗿', name:'Cursed Idol', cost:6, desc:'×2 Mult on every hand, but you get 1 less discard each round.', discards:-1, onHand:()=>({xmult:2})},
   {id:'well', tag:'economy', emoji:'⛲', name:'Wishing Well', cost:5, desc:'+1 emerald every time you play a hand.', playMoney:1},
   {id:'rabbit', tag:'economy', emoji:'🐇', name:"Rabbit's Foot", cost:4, desc:'Your first reroll in every Market is free.', freeReroll:1},
   {id:'banker', tag:'economy', emoji:'🏦', name:'Banker', cost:6, desc:'Interest cap rises from 5 to 10 emeralds.', interestCap:5},
-  {id:'kangaroo', tag:'utility', emoji:'🦘', name:'Kangaroo', cost:7, desc:'+3 hand size.', handSize:3},
+  {id:'kangaroo', tag:'utility', emoji:'🦘', name:'Kangaroo', cost:6, desc:'+2 hand size.', handSize:2},
   {id:'map', tag:'utility', emoji:'🗺️', name:'Treasure Map', cost:6, desc:'+1 Joker offer in every Market.', shopSlots:1},
   /* --- books & money --- */
   {id:'archivist', tag:'utility', emoji:'📚', name:'Archivist', cost:6, desc:'Every 2nd round you win, your most-crafted recipe gains a level.',
@@ -566,15 +566,14 @@ const JOKERS = [
     endMoneyFn:g=>g.discardsLeft >= Math.max(0, baseDiscards() + bonus('discards')) ? 3 : 0},
   {id:'pawn', tag:'economy', emoji:'🏪', name:'Pawnbroker', cost:4, desc:'Jokers sell for 3 more emeralds.', sellBonus:3},
   /* --- more legendary jokers --- */
-  {id:'stone', tag:'xmult', emoji:'🔮', name:"Philosopher's Stone", cost:8, desc:'×3 Mult on every hand, and +1 hand every round.', hands:1, onHand:()=>({xmult:3})},
   {id:'crown', tag:'retrigger', emoji:'👑', name:'Echo Crown', cost:8, desc:'Every card you play scores, and retriggers once, even cards outside the recipe.', allCards:true, retrigger:()=>1},
   {id:'egg', tag:'economy', emoji:'🥚', name:'Golden Egg', cost:8, desc:'+6 emeralds at the end of every round and +1 emerald for every hand you play.', endMoney:6, playMoney:1},
   {id:'library', tag:'utility', emoji:'🏛️', name:'Grand Library', cost:6, desc:'The hand that beats the round levels up its recipe.',
     onPlayed:(type,first)=>{ if(!first) return null; G.handLevels[type]++; return 'Grand Library: ' + HANDS[type].name + ' is now level ' + G.handLevels[type] + '.'; }},
-  {id:'colossus', tag:'xmult', emoji:'🏔️', name:'Mountain King', cost:8, desc:'×1 Mult, and +×0.1 more for every Diamond you discard (all run).',
-    dyn:j=>'now ×' + fmt(1 + 0.1 * j.n), onHand:(c,j)=>j.n>0?{xmult:Math.round((1 + 0.1 * j.n) * 100) / 100}:null,
-    onDiscard:(j,cards)=>{ j.n += (cards || []).filter(c => c.mat === 'diamant').length; }},
-  {id:'hourglass', tag:'utility', emoji:'⌛', name:'Eternal Hourglass', cost:8, desc:'+2 hands and +1 discard every round.', hands:2, discards:1}
+  {id:'colossus', tag:'xmult', emoji:'🏔️', name:'Mountain King', cost:8, desc:'×1 Mult, and +×0.05 more for every card you discard (all run).',
+    dyn:j=>'now ×' + fmt(1 + 0.05 * j.n), onHand:(c,j)=>j.n>0?{xmult:Math.round((1 + 0.05 * j.n) * 100) / 100}:null,
+    onDiscard:(j,cards)=>{ j.n += (cards || []).length; }},
+  {id:'hourglass', tag:'utility', emoji:'⌛', name:'Eternal Hourglass', cost:6, desc:'+1 hand and +1 discard every round.', hands:1, discards:1}
 ];
 /* Names of the recipe books (one per recipe) */
 const SWORD_HANDS = ['holzsword','steinsword','eisensword','goldsword','diamantsword'];
@@ -582,7 +581,7 @@ const PLAIN_HANDS = HAND_ORDER.filter(h => SWORD_HANDS.indexOf(h) < 0);   // rec
 const PACKS = {
   small:{name:'Recipe Pack', emoji:'📘', n:3, cost:2, chance:1,   note:'Pick 1 of 3 recipe books', pool:PLAIN_HANDS},
   grand:{name:'Grand Pack',  emoji:'📕', n:5, cost:4, chance:.35, levels:2, note:'Pick 1 of 5 recipe books, +2 levels', pool:PLAIN_HANDS},
-  sword:{name:'Sword Pack',  emoji:'🗡️', n:5, cost:4, chance:.30, note:'Pick 1 of 5 sword books', pool:SWORD_HANDS}
+  sword:{name:'Sword Pack',  emoji:'🗡️', n:3, cost:4, chance:.30, note:'Pick 1 of 3 sword books', pool:SWORD_HANDS}
 };
 const BOOKS = {
   high:"Scavenger's Notes", pair:"Stacker's Guide", twopair:"Twin-Stack Ledger", three:"Smelter's Handbook",
@@ -1311,8 +1310,8 @@ function roundWon(){
     G.tut.step = 99;
     tutHtml = '<div class="note"><b>Scoring:</b> (60 recipe chips + 15 + 15 + 3 card chips) × 6 Mult = <b>' + num(G.score) + '</b>. Only the cards in the recipe score, and jokers add even more.</div>';
     if(G.tut.gift && G.jokers.length < maxJokers()){
-      const g = makeJoker(JOKER_BY_ID.stone); G.jokers.push(g); markFound(g.id);
-      tutHtml += '<div class="note">🔮 <b>Gift: ' + g.name + '</b>, a Legendary joker! ×3 Mult on every hand and +1 hand each round. Jokers sit in the bar above your cards.</div>';
+      const g = makeJoker(JOKER_BY_ID.crown); G.jokers.push(g); markFound(g.id); G.tut.gift = false; store.set(GIFT_KEY, '1');
+      tutHtml += '<div class="note">👑 <b>Gift: ' + g.name + '</b>, a Legendary joker! Every card you play scores and retriggers. Jokers sit in the bar above your cards.</div>';
     }
   }
   G.jokers.forEach(j => { if(j.onRoundWin){ const m = j.onRoundWin(j); if(typeof m === 'string') notes.push(m); } });
@@ -1508,6 +1507,7 @@ function reroll(){
   if(G.money < pc){ toast('Not enough emeralds.'); sfx.bad(); return; }
   G.money -= pc; if(pc > 0) G.rerollCost++;
   G.rerollsThisShop++;
+  refundPacks();   // an opened, unpicked pack is lost with the old offers: 1 emerald back
   G.shopOffers = genOffers();
   tone(500,.08,'triangle',.05); render(); announceOffers();
 }
@@ -1562,7 +1562,7 @@ function openCollection(tag){
 }
 
 /* ---------- Tutorial ---------- */
-const TUT_KEY = 'blockpoker.tutorial';
+const TUT_KEY = 'blockpoker.tutorial', GIFT_KEY = 'blockpoker.gift';   // the gift is handed out once per browser, ever
 const TUT = [
   {title:'Welcome to Block Poker!', text:'A one-minute tutorial: crafting, scoring, base Chips and Mult, the Market and bundles. You will even win a gift.', btn:'Start'},
   {title:'1 · Crafting', text:'Cards in your hand are materials. Click the glowing cards, <b>2 Diamonds + 1 Stick</b>, to form a recipe.'},
@@ -1607,7 +1607,7 @@ function startTutorial(){
   const hand = dia.concat(stick, take('holz', 2), take('stein', 1), take('eisen', 1), take('gold', 1));
   const used = new Set(hand.map(c => c.id));
   G.hand = hand; G.draw = shuffle(d.filter(c => !used.has(c.id))); sortHand();
-  G.tut = {step:0, gift:!store.get(TUT_KEY), ids:dia.concat(stick).map(c => c.id)};
+  G.tut = {step:0, gift:!store.get(GIFT_KEY), ids:dia.concat(stick).map(c => c.id)};
   render();
 }
 function tutClick(act){
