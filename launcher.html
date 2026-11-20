@@ -37,7 +37,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Block Poker</title>
-<meta name="game-version" content="2026-11-17.3">
+<meta name="game-version" content="2026-11-20.4">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22 shape-rendering=%22crispEdges%22%3E%3Crect width=%2232%22 height=%2232%22 fill=%22%231d140e%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22%23ffc61a%22/%3E%3Cpath d=%22M4 9.5 16 16V29L4 22.5Z%22 fill=%22%23b9784a%22/%3E%3Cpath d=%22M28 9.5 16 16V29L28 22.5Z%22 fill=%22%237a4a2a%22/%3E%3Cpath d=%22M16 3 28 9.5 16 16 4 9.5Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221%22/%3E%3Cpath d=%22M4 9.5 16 16 28 9.5M16 16V29M4 9.5V22.5L16 29 28 22.5V9.5L16 3Z%22 fill=%22none%22 stroke=%22%231d140e%22 stroke-width=%221.5%22 stroke-linejoin=%22round%22/%3E%3Crect x=%2213%22 y=%228%22 width=%226%22 height=%223%22 fill=%22%23fff3a8%22/%3E%3Crect x=%228%22 y=%2217%22 width=%224%22 height=%224%22 fill=%22%232ecc71%22/%3E%3Crect x=%2220%22 y=%2218%22 width=%224%22 height=%224%22 fill=%22%234ad0ff%22/%3E%3C/svg%3E">
 <style>
   :root{
@@ -196,7 +196,6 @@
   .card .cn{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:calc(var(--cw)*.17);font-weight:700;line-height:1}
   .m-holz{--cbg:#f1dcb6}.m-stock{--cbg:#ecd7b6}.m-stein{--cbg:#e4e7ea}.m-eisen{--cbg:#eceae8}.m-gold{--cbg:#fbf0bd}.m-diamant{--cbg:#d3f7f9}
   button.card:hover{transform:translateY(-5px)}
-  .card.sel{transform:translateY(-18px)!important;outline:3px solid var(--gold);outline-offset:0}
   .card.deb{filter:grayscale(1) brightness(.72)}
   .card .x{position:absolute;inset:0;display:grid;place-items:center;font-size:calc(var(--cw)*.7);color:rgba(200,30,20,.85);text-shadow:0 2px 0 #000}
   .score{animation:pop .35s}
@@ -1076,21 +1075,45 @@ function renderJokers(){
   } else { info.hidden = true; info.innerHTML = ''; }
 }
 
+// Cards fly between the hand and the crafting slots: remember where every card was, then glide each moved card from there (FLIP).
+function cardRects(){
+  const m = {bench:{}, hand:{}};
+  if(TEST) return m;
+  document.querySelectorAll('#bench .card').forEach(e => { m.bench[e.dataset.id] = e.getBoundingClientRect(); });
+  document.querySelectorAll('#hand .card').forEach(e => { m.hand[e.dataset.id] = e.getBoundingClientRect(); });
+  return m;
+}
+function flipCards(prev){
+  if(TEST) return;
+  const fly = (e, a) => {
+    const b = e.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top;
+    if(!b.width || (Math.abs(dx) < 2 && Math.abs(dy) < 2) || !e.animate) return;
+    e.style.zIndex = 20; e.style.transformOrigin = 'top left';
+    e.animate([
+      {transform:'translate(' + dx + 'px,' + dy + 'px) scale(' + (a.width / b.width) + ',' + (a.height / b.height) + ') rotate(-5deg)'},
+      {transform:'none'}
+    ], {duration:240, easing:'cubic-bezier(.2,.8,.3,1)'}).onfinish = () => { e.style.zIndex = ''; e.style.transformOrigin = ''; };
+  };
+  document.querySelectorAll('#bench .card').forEach(e => { const a = prev.bench[e.dataset.id] || prev.hand[e.dataset.id]; if(a) fly(e, a); });
+  document.querySelectorAll('#hand .card').forEach(e => { const a = prev.bench[e.dataset.id] || prev.hand[e.dataset.id]; if(a) fly(e, a); });   // sent back to the hand, or sliding over to close a gap
+}
 function renderRound(){
   updatePreview();
   const sel = G.phase === 'play' ? selectedCards() : [];
+  const prev = cardRects();
   let b = '';
   for(let i = 0; i < MAX_SEL; i++){
     if(G.playing[i]) b += '<div class="slot">' + cardHtml(G.playing[i], {tag:'div'}) + '</div>';
-    else if(sel[i]) b += '<div class="slot"><span class="ghost">' + icon(sel[i].mat) + '</span></div>';
+    else if(sel[i]) b += '<div class="slot">' + cardHtml(sel[i]) + '</div>';
     else b += '<div class="slot"></div>';
   }
   b += '<div class="arrow" aria-hidden="true">▶</div>';
   if(G.calc.type) b += '<div class="slot result"><span class="re">' + G.calc.emoji + '</span><span class="rn">' + HANDS[G.calc.type].name + '</span></div>';
   else b += '<div class="slot result"><span class="re" style="opacity:.3">?</span></div>';
   $('#bench').innerHTML = b;
-  $('#hand').innerHTML = G.hand.map(c => cardHtml(c, {sel: G.selected.has(c.id)})).join('');
-  const kb = $('#bKeys'), kt = 'Keys: ' + (handSize() > 9 ? '1-9, 0 and -' : '1-' + handSize()) + ' select a card, Enter crafts, D discards.'; kb.dataset.info = kt; kb.title = kt;
+  $('#hand').innerHTML = G.hand.filter(c => !G.selected.has(c.id)).map(c => cardHtml(c)).join('');   // selected cards live in the crafting slots
+  flipCards(prev);
+  const kb = $('#bKeys'), kt = 'Keys: ' + (handSize() > 9 ? '1-9, 0 and -' : '1-' + handSize()) + ' select a card, Enter crafts, D discards. Right click puts all cards back.'; kb.dataset.info = kt; kb.title = kt;
   const playing = G.phase === 'play';
   $('#bPlay').disabled = !playing || !G.selected.size || G.handsLeft < 1;
   $('#bDiscard').disabled = !playing || !G.selected.size || G.discardsLeft < 1;
@@ -1154,7 +1177,7 @@ function toast(msg, ms){
 function helpHtml(){
   return '<h2>How to play</h2><ul>' +
     '<li>New here? The <b>Tutorial</b> button on the title screen walks you through a first round.</li>' +
-    '<li>Click up to <b>5 cards</b> and press <b>Craft</b>. The cards form a recipe.</li>' +
+    '<li>Click up to <b>5 cards</b> and press <b>Craft</b>. The cards form a recipe. Click a card in a crafting slot (or right click anywhere) to put cards back.</li>' +
     '<li>Score = <b>Chips × Mult</b>. Only the cards that belong to the recipe score.</li>' +
     '<li>See all recipes under <b>Recipes</b>. Example: 2 Diamond + 1 Stick = Diamond Sword.</li>' +
     '<li><b>Discard</b> swaps cards and does not cost a hand.</li>' +
@@ -1765,8 +1788,13 @@ function init(){
   $('#bDiscard').addEventListener('click', discardSelected);
   $('#bSortVal').addEventListener('click', () => { if(G && G.phase === 'play'){ G.sort = 'val'; sortHand(); render(); } });
   $('#bSortMat').addEventListener('click', () => { if(G && G.phase === 'play'){ G.sort = 'mat'; sortHand(); render(); } });
-  $('#hand').addEventListener('click', e => {
+  ['#hand', '#bench'].forEach(sel => $(sel).addEventListener('click', e => {   // clicking a card in a crafting slot sends it back to the hand
     const c = e.target.closest('.card'); if(c) toggleCard(parseInt(c.dataset.id, 10));
+  }));
+  document.addEventListener('contextmenu', e => {   // right click anywhere in a round puts every selected card back
+    if(!G || G.phase !== 'play' || $('#game').hidden || modalOpen()) return;
+    e.preventDefault();
+    if(G.selected.size){ G.selected = new Set(); sfx.pick(); if(G.tut) tutCheck(); render(); }
   });
   $('#jokerbar').addEventListener('click', e => {
     if(Date.now() < blockClickUntil) return;
@@ -1867,7 +1895,7 @@ function init(){
     if(!G || G.phase !== 'play' || $('#game').hidden) return;
     if(e.metaKey || e.ctrlKey || e.altKey) return;
     const ki = /^[1-9]$/.test(e.key) ? parseInt(e.key, 10) - 1 : e.key === '0' ? 9 : e.key === '-' ? 10 : -1;
-    if(ki >= 0){ const c = G.hand[ki]; if(c) toggleCard(c.id); }
+    if(ki >= 0){ const c = G.hand.filter(x => !G.selected.has(x.id))[ki]; if(c) toggleCard(c.id); }   // counts the cards still in the hand
     else if(e.key === 'Enter'){ e.preventDefault(); playSelected(); }
     else if(e.key === 'd' || e.key === 'D' || e.key === 'Backspace'){ e.preventDefault(); discardSelected(); }
   });
